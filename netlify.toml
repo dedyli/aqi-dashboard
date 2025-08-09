@@ -2,6 +2,11 @@
   publish = "."
   functions = "netlify/functions"
 
+# Pin the Node runtime used to build & run functions
+[build.environment]
+  NODE_VERSION = "18"
+
 [functions]
   node_bundler = "esbuild"
-  node_version = "18"
+  # (optional) include globs if you read files at runtime
+  # included_files = ["some-folder/**"]
