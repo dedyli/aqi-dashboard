@@ -26,7 +26,7 @@
     #viewDiv.sidebar-open{left:320px}
     #viewDiv.settings-open{right:320px}
 
-    /* Sidebar */
+    /* Sidebar & Settings */
     .sidebar,.settings-panel{
       position:fixed;top:70px;width:320px;height:calc(100vh - 70px);
       background:linear-gradient(180deg,#8B2B8B 0%,#4A4A4A 100%);color:#fff;padding:18px;z-index:1000;overflow:auto;transition:.25s
@@ -168,7 +168,7 @@
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
-      // Live PM2.5 (OpenAQ latest hour) — CORRECT Living Atlas service
+      // Live PM2.5 (OpenAQ latest hour)
       const pm25Layer = new FeatureLayer({
         url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title: "PM2.5 (OpenAQ, latest hour)",
@@ -298,7 +298,7 @@
       document.getElementById("layerCities").addEventListener("change", e=> citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
 
-      // Simple search (quick city zoom preset)
+      // Simple search
       function performSearch(){
         const q = document.getElementById("searchInput").value.toLowerCase().trim();
         if(!q) return;
@@ -328,7 +328,7 @@
       });
     });
 
-    /************ CHATBOT (drag + minimize + server call) ************/
+    /************ CHATBOT (drag + minimize + history + server call) ************/
     (function(){
       const chat = document.getElementById("chat");
       const head = document.getElementById("chatHead");
@@ -337,6 +337,7 @@
       const msgs = document.getElementById("msgs");
       const q = document.getElementById("q");
       const send = document.getElementById("send");
+      const chatHistory = []; // {role:'user'|'assistant', content:string}
 
       // Drag
       let drag=false, offX=0, offY=0;
@@ -374,13 +375,21 @@
         thinking.className="bubble bot"; thinking.textContent="Thinking…";
         msgs.appendChild(thinking); msgs.scrollTop = msgs.scrollHeight;
 
+        // keep short history (last 8 turns)
+        chatHistory.push({ role:"user", content:text });
+
         try{
-          const resp = await fetch("/.netlify/functions/AQI-Chat", {
-            method:"POST", headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ userMessage: text })
+          const resp = await fetch("/.netlify/functions/aqi-chat", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json", "Cache-Control":"no-store" },
+            cache:"no-store",
+            body: JSON.stringify({ userMessage: text, history: chatHistory.slice(-8) })
           });
           const data = await resp.json();
-          thinking.innerHTML = data.reply || "Sorry, I couldn't respond.";
+          const reply = data.reply || "Sorry, I couldn't respond.";
+          thinking.innerHTML = reply;
+          chatHistory.push({ role:"assistant", content: reply });
+
           if(data.action && data.action.type==="zoomTo" && data.action.city){
             window.zoomToCity(data.action.city, data.action.country || "");
           }
