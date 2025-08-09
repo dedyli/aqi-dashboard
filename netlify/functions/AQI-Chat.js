@@ -4,7 +4,7 @@
 
 exports.handler = async (event) => {
   // ---- CONFIG ----
-  const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"; // <-- put your key here
+  const OPENAI_API_KEY = "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"; // <-- put your key here
   const FS =
     "https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0/query";
   const SANE_WHERE =
