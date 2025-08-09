@@ -1,7 +1,9 @@
 // netlify/functions/AQI-Chat.js
-// LLM-first AQI specialist with tool calling (no handcrafted fallbacks)
+// LLM-first AQI specialist with tool calling (OpenAQ via Esri Living Atlas)
+// Reads secrets from Netlify env vars (no keys in code).
 
 exports.handler = async (event) => {
+  // POST only
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -14,8 +16,12 @@ exports.handler = async (event) => {
     };
   }
 
-  // ----- CONFIG -----
-  const OPENAI_API_KEY = "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"; // <-- paste your key
+  // -------- CONFIG (from environment) --------
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;          // set in Netlify UI
+  const OPENAI_MODEL   = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const NODE_ENV_NAME  = process.env.NODE_VERSION || "18";
+
+  // ArcGIS Feature Service (Esri Living Atlas → OpenAQ PM2.5 latest hour)
   const FS =
     "https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0/query";
   const SANE_WHERE =
@@ -31,32 +37,40 @@ exports.handler = async (event) => {
     body: JSON.stringify(obj),
   });
 
+  if (!OPENAI_API_KEY || !OPENAI_API_KEY.startsWith("sk-")) {
+    console.error("Missing/invalid OPENAI_API_KEY env var.");
+    return json({
+      reply:
+        "Server configuration error: missing OpenAI API key. Please set OPENAI_API_KEY in Netlify → Site settings → Environment variables and redeploy.",
+    });
+  }
+
+  // -------- helpers --------
   const postFS = async (params) => {
     const res = await fetch(FS, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(params).toString(),
     });
-    if (!res.ok) throw new Error(`ArcGIS FS ${res.status}`);
+    if (!res.ok) throw new Error(`ArcGIS FS ${res.status} ${res.statusText}`);
     const j = await res.json();
     if (j.error) throw new Error(j.error.message || "ArcGIS FS error");
     return j;
   };
-
   const clean = (s = "") => String(s).replace(/'/g, "''");
 
   try {
     const { userMessage = "", history = [] } = JSON.parse(event.body || "{}");
     const text = String(userMessage || "").trim();
 
-    // ----- Tool definitions (for the LLM) -----
+    // ---- Tools exposed to the LLM ----
     const tools = [
       {
         type: "function",
         function: {
           name: "getTopCities",
           description:
-            "Return top N polluted cities worldwide using latest PM2.5 (avg across stations, include only cities with ≥3 stations). Values in µg/m³.",
+            "Return top N polluted cities worldwide using latest PM2.5 (avg across stations; include only cities with ≥3 stations). Values in µg/m³.",
           parameters: {
             type: "object",
             properties: {
@@ -79,7 +93,7 @@ exports.handler = async (event) => {
             properties: {
               query: {
                 type: "string",
-                description: "City text provided by the user, e.g. 'delhi', 'hanoi'.",
+                description: "City text, e.g., 'delhi', 'hanoi', 'paris'.",
               },
             },
             required: ["query"],
@@ -88,9 +102,12 @@ exports.handler = async (event) => {
       },
     ];
 
-    // ----- Tool implementations -----
+    // ---- Tool implementations ----
     async function run_getTopCities(args = {}) {
-      const k = Math.max(1, Math.min(20, Number.isFinite(+args.limit) ? +args.limit : 5));
+      const k = Math.max(
+        1,
+        Math.min(20, Number.isFinite(+args.limit) ? +args.limit : 5)
+      );
       const stats = JSON.stringify([
         { statisticType: "avg", onStatisticField: "value", outStatisticFieldName: "avg_pm25" },
         { statisticType: "count", onStatisticField: "value", outStatisticFieldName: "n_stations" },
@@ -147,63 +164,87 @@ exports.handler = async (event) => {
       };
     }
 
-    // ----- System prompt (persona + constraints). No hard fallbacks here. -----
+    // ---- System persona (AQI-only; LLM decides everything else) ----
     const system = `
-You are "AQI Assistant", an **air-quality (PM2.5/AQI) specialist** embedded in a map dashboard.
-Be concise (1–4 sentences), evidence-based, and current. Use the available tools to fetch live PM2.5 where helpful.
-Answer **only** air-quality questions; for unrelated topics, briefly decline.
-Categories (µg/m³): Good 0–10; Moderate 10–25; USG 25–50; Unhealthy 50–75; Very Unhealthy 75–100; Hazardous 100+.
-Always include brief context when citing live figures, e.g., “Source: OpenAQ via Esri Living Atlas (latest hour)”.
-If a zoomTo action is returned in tool data, mention it briefly; the UI may use it.
-`.trim();
+You are "AQI Assistant", an air-quality (PM2.5/AQI) specialist in a map dashboard.
+Answer ONLY air-quality topics. Use the tools for live PM2.5 data when useful.
+Be concise (1–4 sentences), factual, and avoid made-up numbers.
+Include: “Source: OpenAQ via Esri Living Atlas (latest hour)” when citing live values.
+If a tool returns a 'zoomTo' action, mention it briefly; the UI may handle it.
+    `.trim();
 
-    // Keep last 8 turns to avoid repetition
+    // keep last 8 turns
     const safeHistory = Array.isArray(history)
-      ? history.slice(-8).filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      ? history
+          .slice(-8)
+          .filter(
+            (m) =>
+              m &&
+              (m.role === "user" || m.role === "assistant") &&
+              typeof m.content === "string"
+          )
       : [];
 
-    // 1) Let the model decide whether to call a tool
-    const first = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        max_tokens: 350,
-        tools,
-        tool_choice: "auto",
-        messages: [{ role: "system", content: system }, ...safeHistory, { role: "user", content: text }],
-      }),
-    }).then(r => r.json());
+    // ---- OpenAI helper with explicit error surface ----
+    async function callOpenAI(body) {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+      });
+      let out;
+      try {
+        out = await r.json();
+      } catch (e) {
+        console.error("OpenAI parse error:", e);
+        return { ok: false, msg: "OpenAI response parse error." };
+      }
+      if (!r.ok || out?.error) {
+        const msg = out?.error?.message || `${r.status} ${r.statusText}`;
+        console.error("OpenAI error:", msg);
+        return { ok: false, msg: `OpenAI error: ${msg}` };
+      }
+      return { ok: true, data: out };
+    }
 
-    // Build conversation for potential second turn
+    // 1) Let the model decide whether to call a tool
+    const first = await callOpenAI({
+      model: OPENAI_MODEL,
+      temperature: 0.7,
+      max_tokens: 350,
+      tools: [
+        { type: "function", function: { name: "getTopCities", parameters: { type: "object", properties: { limit: { type: "integer" } } }, description: "Return top N polluted cities using latest PM2.5." } },
+        { type: "function", function: { name: "getCityPM25", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] }, description: "Return live PM2.5 summary for a city (best match)." } }
+      ],
+      tool_choice: "auto",
+      messages: [{ role: "system", content: system }, ...safeHistory, { role: "user", content: text }],
+    });
+    if (!first.ok) return json({ reply: first.msg });
+
     let messages = [{ role: "system", content: system }, ...safeHistory, { role: "user", content: text }];
     let action = null;
+    const msg = first.data?.choices?.[0]?.message;
 
-    // 2) Execute tool calls returned by the model (support multiple)
-    const msg = first?.choices?.[0]?.message;
-    if (msg?.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
+    // 2) Execute tool calls (support many)
+    if (msg?.tool_calls?.length) {
       messages.push(msg); // assistant with tool_calls
-
       for (const call of msg.tool_calls) {
         const name = call.function?.name || call.name;
         const argsJson = call.function?.arguments || call.arguments || "{}";
-        let result = null;
-
+        let result;
         try {
           const args = JSON.parse(argsJson);
           if (name === "getTopCities") result = await run_getTopCities(args);
-          if (name === "getCityPM25") {
+          else if (name === "getCityPM25") {
             result = await run_getCityPM25(args);
             if (result?.action) action = result.action;
-          }
+          } else result = { error: `Unknown tool: ${name}` };
         } catch (e) {
-          result = { error: String(e?.message || e) };
+          result = { error: `Tool exec error: ${String(e?.message || e)}` };
         }
-
         messages.push({
           role: "tool",
           tool_call_id: call.id,
@@ -212,28 +253,23 @@ If a zoomTo action is returned in tool data, mention it briefly; the UI may use 
         });
       }
 
-      // 3) Ask the model to craft the final natural reply using tool outputs
-      const second = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.7,
-          max_tokens: 350,
-          messages,
-        }),
-      }).then(r => r.json());
-
-      const reply = second?.choices?.[0]?.message?.content?.trim() ?? "";
-      return json({ reply, action });
+      // 3) Finalize natural reply using tool outputs
+      const second = await callOpenAI({
+        model: OPENAI_MODEL,
+        temperature: 0.7,
+        max_tokens: 350,
+        messages,
+      });
+      if (!second.ok) return json({ reply: second.msg });
+      const reply2 = second.data?.choices?.[0]?.message?.content?.trim() || "";
+      return json({ reply: reply2 || "OpenAI returned no content.", action });
     }
 
-    // 4) If the model didn’t call tools, return its direct answer (no hardcoded fallback)
-    const reply = msg?.content?.trim() ?? "";
-    return json({ reply, action });
+    // 4) No tool calls → direct answer
+    const reply = msg?.content?.trim() || "";
+    return json({ reply: reply || "OpenAI returned no content.", action });
   } catch (err) {
-    console.error(err);
-    // Only genuine error message remains.
-    return json({ reply: "Sorry — I hit an error while answering. Please try again." }, 200);
+    console.error("Handler error:", err);
+    return json({ reply: "Server error while answering. Please try again." }, 200);
   }
 };
