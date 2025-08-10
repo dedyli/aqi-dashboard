@@ -173,17 +173,162 @@
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
-      // CAMS PM2.5 Imagery Layer (added as requested)
-      const camsPM25Layer = new ImageryLayer({
-        url: "https://tiledimageservices9.arcgis.com/z8gE404285UknAUx/arcgis/rest/services/CAMS_PM25_latest/ImageServer",
-        title: "CAMS PM2.5 Forecast",
-        opacity: 0.7,
-        popupTemplate: {
-          title: "CAMS PM2.5 Forecast",
-          content: "PM2.5 concentration: {Raster.ServicePixelValue.value} µg/m³"
-        }
+      // Open-Meteo PM2.5 Layer (using GraphicsLayer to display API data)
+      const openMeteoLayer = new GraphicsLayer({
+        title: "Open-Meteo PM2.5 (Global)",
+        visible: true
       });
-      map.add(camsPM25Layer);
+      map.add(openMeteoLayer);
+
+      // Function to fetch and display Open-Meteo PM2.5 data
+      async function loadOpenMeteoData() {
+        try {
+          // Define a grid of points to fetch PM2.5 data
+          // Covering major cities and regions globally
+          const locations = [
+            // Asia - with emphasis on China
+            {lat: 39.9, lon: 116.4, name: "Beijing"},
+            {lat: 31.2, lon: 121.5, name: "Shanghai"},
+            {lat: 23.1, lon: 113.3, name: "Guangzhou"},
+            {lat: 30.6, lon: 114.3, name: "Wuhan"},
+            {lat: 34.3, lon: 108.9, name: "Xi'an"},
+            {lat: 29.6, lon: 106.5, name: "Chongqing"},
+            {lat: 36.7, lon: 117.0, name: "Jinan"},
+            {lat: 45.8, lon: 126.6, name: "Harbin"},
+            {lat: 41.8, lon: 123.4, name: "Shenyang"},
+            {lat: 38.0, lon: 114.5, name: "Shijiazhuang"},
+            {lat: 28.2, lon: 112.9, name: "Changsha"},
+            {lat: 22.5, lon: 114.1, name: "Hong Kong"},
+            // Other Asian cities
+            {lat: 28.6, lon: 77.2, name: "Delhi"},
+            {lat: 19.1, lon: 72.9, name: "Mumbai"},
+            {lat: 35.7, lon: 139.7, name: "Tokyo"},
+            {lat: 37.6, lon: 127.0, name: "Seoul"},
+            {lat: 13.8, lon: 100.5, name: "Bangkok"},
+            {lat: -6.2, lon: 106.8, name: "Jakarta"},
+            {lat: 1.3, lon: 103.8, name: "Singapore"},
+            {lat: 23.8, lon: 90.4, name: "Dhaka"},
+            {lat: 31.5, lon: 74.3, name: "Lahore"},
+            {lat: 24.9, lon: 67.1, name: "Karachi"},
+            // Europe
+            {lat: 51.5, lon: -0.1, name: "London"},
+            {lat: 48.9, lon: 2.4, name: "Paris"},
+            {lat: 52.5, lon: 13.4, name: "Berlin"},
+            {lat: 55.8, lon: 37.6, name: "Moscow"},
+            {lat: 40.4, lon: -3.7, name: "Madrid"},
+            {lat: 41.9, lon: 12.5, name: "Rome"},
+            // Americas
+            {lat: 40.7, lon: -74.0, name: "New York"},
+            {lat: 34.1, lon: -118.2, name: "Los Angeles"},
+            {lat: 19.4, lon: -99.1, name: "Mexico City"},
+            {lat: -23.5, lon: -46.6, name: "São Paulo"},
+            {lat: -34.6, lon: -58.4, name: "Buenos Aires"},
+            // Africa
+            {lat: 30.0, lon: 31.2, name: "Cairo"},
+            {lat: -1.3, lon: 36.8, name: "Nairobi"},
+            {lat: 6.5, lon: 3.4, name: "Lagos"},
+            {lat: -26.2, lon: 28.0, name: "Johannesburg"},
+            // Oceania
+            {lat: -33.9, lon: 151.2, name: "Sydney"},
+            {lat: -37.8, lon: 144.9, name: "Melbourne"}
+          ];
+
+          // Clear existing graphics
+          openMeteoLayer.removeAll();
+
+          // Fetch data for each location
+          for (const loc of locations) {
+            try {
+              const response = await fetch(
+                `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.lat}&longitude=${loc.lon}&current=pm2_5&timezone=auto`
+              );
+              
+              if (!response.ok) continue;
+              
+              const data = await response.json();
+              if (data.current && data.current.pm2_5 !== null) {
+                const pm25Value = data.current.pm2_5;
+                
+                // Determine color based on PM2.5 value
+                let color, size;
+                if (pm25Value <= 10) {
+                  color = [0, 228, 0, 0.8]; // Green
+                  size = 12;
+                } else if (pm25Value <= 25) {
+                  color = [255, 255, 0, 0.8]; // Yellow
+                  size = 14;
+                } else if (pm25Value <= 50) {
+                  color = [255, 126, 0, 0.8]; // Orange
+                  size = 16;
+                } else if (pm25Value <= 75) {
+                  color = [255, 0, 0, 0.8]; // Red
+                  size = 18;
+                } else if (pm25Value <= 100) {
+                  color = [143, 63, 151, 0.8]; // Purple
+                  size = 20;
+                } else {
+                  color = [126, 0, 35, 0.8]; // Maroon
+                  size = 22;
+                }
+
+                // Create graphic for this location
+                const point = {
+                  type: "point",
+                  longitude: loc.lon,
+                  latitude: loc.lat
+                };
+
+                const simpleMarkerSymbol = {
+                  type: "simple-marker",
+                  color: color,
+                  outline: {
+                    color: [255, 255, 255],
+                    width: 1.5
+                  },
+                  size: size
+                };
+
+                const pointGraphic = new Graphic({
+                  geometry: point,
+                  symbol: simpleMarkerSymbol,
+                  attributes: {
+                    location: loc.name,
+                    pm25: pm25Value,
+                    unit: "µg/m³"
+                  },
+                  popupTemplate: {
+                    title: "{location} (Open-Meteo)",
+                    content: `
+                      <div style="line-height:1.5">
+                        <b>PM2.5:</b> {pm25} {unit}<br>
+                        <b>Source:</b> Open-Meteo Air Quality API<br>
+                        <b>Updated:</b> ${new Date().toLocaleString()}
+                      </div>`
+                  }
+                });
+
+                openMeteoLayer.add(pointGraphic);
+              }
+            } catch (err) {
+              console.log(`Failed to fetch data for ${loc.name}:`, err);
+            }
+            
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          console.log("Open-Meteo PM2.5 data loaded successfully");
+        } catch (error) {
+          console.error("Error loading Open-Meteo data:", error);
+        }
+      }
+
+      // Load Open-Meteo data when map is ready
+      view.when(() => {
+        loadOpenMeteoData();
+        // Refresh every 30 minutes
+        setInterval(loadOpenMeteoData, 30 * 60 * 1000);
+      });
 
       // Live PM2.5 (OpenAQ latest hour)
       const pm25Layer = new FeatureLayer({
