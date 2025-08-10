@@ -3,7 +3,7 @@
 // Query params: ?lat1=..&lon1=..&lat2=..&lon2=..&step=0.5
 // Defaults roughly to East Asia if no bbox is passed.
 
-export async function handler(event) {
+exports.handler = async (event) => {
   try {
     const q = event.queryStringParameters || {};
 
@@ -13,9 +13,10 @@ export async function handler(event) {
     const lat2 = parseFloat(q.lat2 ?? 55);
     const lon2 = parseFloat(q.lon2 ?? 140);
 
-    // Grid spacing in degrees (smaller = denser = more API compute)
-    const step = Math.max(0.25, Math.min(2, parseFloat(q.step ?? 0.5)));
+    // Grid spacing in degrees (smaller = denser)
+    const step = clamp(parseFloat(q.step ?? 0.5), 0.25, 2);
 
+    // Build a simple lat/lon grid inside the bbox
     const lats = [];
     const lons = [];
     for (let lat = Math.min(lat1, lat2); lat <= Math.max(lat1, lat2) + 1e-9; lat += step) {
@@ -25,16 +26,12 @@ export async function handler(event) {
       }
     }
 
-    // Keep it sane (serverless cold starts + your browser): cap at 400 points
+    // Keep it sane for serverless + browser
     if (lats.length > 400) {
-      return resp(
-        { error: `Grid too dense (${lats.length} points). Increase step or zoom in.` },
-        400
-      );
+      return geo({ features: [], warning: `Grid too dense (${lats.length} points). Increase step or zoom in.` });
     }
 
-    // Open-Meteo supports multiple coordinates in one request
-    // Use global CAMS domain and ask only for current pm2_5
+    // Query Open-Meteo (CAMS global domain) for current PM2.5
     const url =
       "https://air-quality-api.open-meteo.com/v1/air-quality" +
       `?latitude=${lats.join(",")}` +
@@ -43,45 +40,67 @@ export async function handler(event) {
       `&domains=cams_global`;
 
     const r = await fetch(url);
-    if (!r.ok) return resp({ error: `Open-Meteo ${r.status} ${r.statusText}` }, 502);
+    if (!r.ok) {
+      return geo({ features: [], error: `Open-Meteo ${r.status} ${r.statusText}` }, 502);
+    }
     const j = await r.json();
 
-    // If multiple coords are passed, API returns a list of objects (one per coord). :contentReference[oaicite:1]{index=1}
-    const list = Array.isArray(j) ? j : [j];
+    // Open-Meteo returns either:
+    //  • { results: [ { latitude, longitude, current: { pm2_5, time } }, ... ] }
+    //  • or an array [ { latitude, longitude, current: { ... } }, ... ]
+    const list = Array.isArray(j) ? j : (Array.isArray(j.results) ? j.results : []);
 
-    const fc = {
-      type: "FeatureCollection",
-      features: list.map((d) => {
-        // Safety: current.pm2_5 might be undefined
-        const pm = d?.current?.pm2_5;
-        const value = typeof pm === "number" ? pm : null;
-        return {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [d.longitude, d.latitude] },
-          properties: {
-            pm25: value, // μg/m³
-            source: "Open-Meteo (CAMS model)",
-            time: d?.current?.time || null,
-          },
-        };
-      }),
-    };
+    const features = list.map(d => {
+      const lat = safeNum(d?.latitude);
+      const lon = safeNum(d?.longitude);
+      const pm  = safeNum(d?.current?.pm2_5, null);
+      const t   = d?.current?.time || null;
 
-    return resp(fc);
+      // Skip invalid coords
+      if (!isFinite(lat) || !isFinite(lon)) return null;
+
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [lon, lat] },
+        properties: {
+          pm25: pm, // μg/m³
+          time: t,
+          source: "Open-Meteo (CAMS model)"
+        }
+      };
+    }).filter(Boolean);
+
+    return geo({ features });
   } catch (e) {
     console.error(e);
-    return resp({ error: String(e?.message || e) }, 500);
+    return geo({ features: [], error: String(e?.message || e) }, 500);
   }
 
-  function resp(obj, status = 200) {
+  // ---- helpers ----
+  function clamp(v, lo, hi) {
+    v = Number.isFinite(v) ? v : lo;
+    return Math.max(lo, Math.min(hi, v));
+  }
+  function safeNum(v, fallback = undefined) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  function geo({ features, error, warning }, status = 200) {
+    const body = {
+      type: "FeatureCollection",
+      features: features || [],
+    };
+    if (error)   body.error   = error;
+    if (warning) body.warning = warning;
+
     return {
       statusCode: status,
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
-        "Netlify-CDN-Cache-Control": "no-store",
+        "Netlify-CDN-Cache-Control": "no-store"
       },
-      body: JSON.stringify(obj),
+      body: JSON.stringify(body)
     };
   }
-}
+};
