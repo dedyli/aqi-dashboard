@@ -1,24 +1,18 @@
 // netlify/functions/openmeteo-grid.js
-// Returns GeoJSON points with near-surface PM2.5 from Open-Meteo Air Quality.
-// Robust to bulk limits by chunking requests.
+// Open-Meteo PM2.5 -> GeoJSON (robust + partial results)
+// Always responds 200 so ArcGIS GeoJSONLayer can render.
 
-function clamp(v, lo, hi) {
-  v = Number.isFinite(+v) ? +v : lo;
-  return Math.max(lo, Math.min(hi, v));
-}
-function safeNum(v, fb = undefined) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fb;
-}
+function clamp(v, lo, hi) { v = Number.isFinite(+v) ? +v : lo; return Math.max(lo, Math.min(hi, v)); }
+function safeNum(v, fb = undefined) { const n = Number(v); return Number.isFinite(n) ? n : fb; }
 function geo({ features, error, warning }, status = 200) {
   const body = { type: "FeatureCollection", features: features || [] };
   if (error) body.error = error;
   if (warning) body.warning = warning;
   return {
-    statusCode: status,
+    statusCode: status, // must be 200 for GeoJSONLayer
     headers: {
       "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=900",
+      "Cache-Control": "public, max-age=30",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type"
@@ -54,7 +48,7 @@ exports.handler = async (event) => {
     // Build grid with safety cap
     const lats = [];
     const lons = [];
-    const MAX_POINTS = 160; // keep modest; we’ll chunk further below
+    const MAX_POINTS = 160; // modest; we chunk below
 
     for (let lat = Math.min(lat1, lat2); lat <= Math.max(lat1, lat2) + 1e-9; lat += step) {
       for (let lon = Math.min(lon1, lon2); lon <= Math.max(lon1, lon2) + 1e-9; lon += step) {
@@ -65,92 +59,106 @@ exports.handler = async (event) => {
       if (lats.length >= MAX_POINTS) break;
     }
 
-    if (lats.length === 0) return geo({ features: [] });
-    if (lats.length >= MAX_POINTS) {
-      return geo({ features: [], warning: `Grid too dense (${lats.length}+ pts). Increase step or zoom in.` });
-    }
-
-    // Chunk requests to avoid Open-Meteo bulk limits
-    const BATCH = 10; // safe batch size
-    const features = [];
-    const errors = [];
+    if (lats.length === 0) return geo({ features: [], warning: "Empty extent." });
+    let warnings = [];
 
     const host = "https://air-quality-api.open-meteo.com/v1/air-quality";
 
-    for (let i = 0; i < lats.length; i += BATCH) {
-      const latChunk = lats.slice(i, i + BATCH);
-      const lonChunk = lons.slice(i, i + BATCH);
-
+    async function fetchBatch(latArr, lonArr) {
       const url =
         host +
-        `?latitude=${latChunk.join(",")}` +
-        `&longitude=${lonChunk.join(",")}` +
-        `&hourly=pm2_5` +
-        `&forecast_hours=1` +
-        `&timezone=UTC`;
+        `?latitude=${latArr.join(",")}` +
+        `&longitude=${lonArr.join(",")}` +
+        `&hourly=pm2_5&forecast_hours=1&timezone=UTC`;
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        const t = await resp.text().catch(() => "");
+        throw new Error(`${resp.status} ${resp.statusText} ${t}`.trim());
+      }
+      return resp.json();
+    }
 
+    function toFeatures(j) {
+      const out = [];
+      const latArr = Array.isArray(j?.latitude) ? j.latitude : (j?.latitude != null ? [j.latitude] : []);
+      const lonArr = Array.isArray(j?.longitude) ? j.longitude : (j?.longitude != null ? [j.longitude] : []);
+      const timeArr = Array.isArray(j?.hourly?.time) ? j.hourly.time : [];
+      const series = j?.hourly?.pm2_5;
+      if (!latArr.length || !lonArr.length || !Array.isArray(series)) return out;
+
+      const is2D = Array.isArray(series[0]);
+      const time0 = timeArr?.[0] ?? null;
+      const n = Math.min(latArr.length, lonArr.length, is2D ? series.length : series.length);
+
+      for (let i = 0; i < n; i++) {
+        const lat = safeNum(latArr[i]);
+        const lon = safeNum(lonArr[i]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+
+        let pm = null;
+        if (is2D) pm = safeNum(series[i]?.[0], null);
+        else pm = (series.length === n) ? safeNum(series[i], null) : safeNum(series[0], null);
+
+        out.push({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [lon, lat] },
+          properties: { pm25: pm, time: time0, source: "Open-Meteo (auto-selected)" }
+        });
+      }
+      return out;
+    }
+
+    // Chunk + retry logic
+    const features = [];
+    const BATCH_MAX = 10;
+
+    for (let i = 0; i < lats.length; i += BATCH_MAX) {
+      const latChunk = lats.slice(i, i + BATCH_MAX);
+      const lonChunk = lons.slice(i, i + BATCH_MAX);
+
+      // 1) try full chunk
       try {
-        const r = await fetch(url);
-        if (!r.ok) {
-          const txt = await r.text().catch(() => "");
-          console.error("Open-Meteo batch failed:", r.status, r.statusText, txt);
-          errors.push(`${r.status} ${r.statusText}`);
-          continue;
-        }
+        const j = await fetchBatch(latChunk, lonChunk);
+        features.push(...toFeatures(j));
+        continue;
+      } catch (e1) {
+        warnings.push(`Batch ${i / BATCH_MAX + 1}: ${e1.message}`);
+      }
 
-        const j = await r.json();
-
-        const latArr = Array.isArray(j?.latitude) ? j.latitude : (j?.latitude != null ? [j.latitude] : []);
-        const lonArr = Array.isArray(j?.longitude) ? j.longitude : (j?.longitude != null ? [j.longitude] : []);
-        const timeArr = Array.isArray(j?.hourly?.time) ? j.hourly.time : [];
-        const series = j?.hourly?.pm2_5;
-
-        if (!latArr.length || !lonArr.length || !Array.isArray(series)) {
-          errors.push("No hourly pm2_5 in response");
-          continue;
-        }
-
-        const is2D = Array.isArray(series[0]); // [[loc0_t0,...],[loc1_t0,...],...]
-        const time0 = timeArr?.[0] ?? null;
-        const n = Math.min(latArr.length, lonArr.length, is2D ? series.length : series.length);
-
-        for (let k = 0; k < n; k++) {
-          const lat = safeNum(latArr[k]);
-          const lon = safeNum(lonArr[k]);
-          if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-
-          let pm = null;
-          if (is2D) {
-            pm = safeNum(series[k]?.[0], null); // first hour
-          } else {
-            pm = (series.length === n) ? safeNum(series[k], null) : safeNum(series[0], null);
-          }
-
-          features.push({
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [lon, lat] },
-            properties: {
-              pm25: pm,
-              time: time0,
-              source: "Open-Meteo (auto-selected model)"
+      // 2) try smaller halves
+      try {
+        for (let off = 0; off < latChunk.length; off += 5) {
+          const la = latChunk.slice(off, off + 5);
+          const lo = lonChunk.slice(off, off + 5);
+          if (!la.length) continue;
+          try {
+            const j = await fetchBatch(la, lo);
+            features.push(...toFeatures(j));
+          } catch (e2) {
+            // 3) last resort: per-point
+            for (let k = 0; k < la.length; k++) {
+              try {
+                const j = await fetchBatch([la[k]], [lo[k]]);
+                features.push(...toFeatures(j));
+              } catch (e3) {
+                warnings.push(`Point ${la[k]},${lo[k]} failed: ${e3.message}`);
+              }
             }
-          });
+          }
         }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        errors.push(err?.message || "fetch failed");
+      } catch (e) {
+        warnings.push(`Reducer error: ${e.message}`);
       }
     }
 
-    if (features.length === 0 && errors.length) {
-      return geo({ features: [], error: `Open-Meteo requests failed: ${errors.join(" | ")}` }, 502);
+    // Always 200; include warnings so the UI can keep working.
+    if (!features.length) {
+      return geo({ features: [], warning: warnings.join(" | ") || "No data returned for this extent." });
     }
-
-    const warn = errors.length ? `Some batches failed: ${errors.join(" | ")}` : undefined;
-    return geo({ features, warning: warn });
+    return geo({ features, warning: warnings.length ? warnings.join(" | ") : undefined });
   } catch (e) {
-    console.error("Open-Meteo function error:", e);
-    return geo({ features: [], error: String(e?.message || "Unknown error") }, 500);
+    // Still 200 for GeoJSONLayer; embed the error message.
+    return geo({ features: [], error: `Server error: ${e.message}` });
   }
 };
 
