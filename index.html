@@ -97,7 +97,7 @@
     <div id="topCities"><div style="opacity:.85">Loading…</div></div>
 
     <h3>📈 Notes</h3>
-    <div style="opacity:.9;font-size:13px">Data: OpenAQ via Esri Living Atlas (latest ~hour). Values filtered to 0–500 µg/m³ and cities with ≥3 stations.</div>
+    <div style="opacity:.9;font-size:13px">Data: OpenAQ via Esri Living Atlas (latest ~hour). Values filtered to 0–500 µg/m³ and cities with ≥3 stations. CAMS layer provides additional global coverage including China.</div>
 
     <h3>ℹ️ Status</h3>
     <div id="status" style="opacity:.9;font-size:13px"></div>
@@ -119,6 +119,10 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>PM2.5 (OpenAQ Live)</span>
       <label><input type="checkbox" id="layerAQI" checked> Visible</label>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+      <span>CAMS PM2.5 Imagery</span>
+      <label><input type="checkbox" id="layerCAMS" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>World Cities</span>
@@ -143,7 +147,7 @@
     </div>
     <div id="chatBody">
       <div id="msgs">
-        <div class="bubble bot">Hi! Ask me about air quality (PM2.5/AQI). Try: “Top 5 polluted cities now”, “What’s PM2.5 in Hanoi?”, or “Zoom to Delhi”.</div>
+        <div class="bubble bot">Hi! Ask me about air quality (PM2.5/AQI). Try: "Top 5 polluted cities now", "What's PM2.5 in Hanoi?", or "Zoom to Delhi".</div>
       </div>
       <div id="composer">
         <input id="q" placeholder="Ask about PM2.5 / AQI…"/>
@@ -158,8 +162,9 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
+      "esri/layers/ImageryLayer",
       "esri/widgets/Legend"
-    ], function(Map, MapView, FeatureLayer, Legend) {
+    ], function(Map, MapView, FeatureLayer, ImageryLayer, Legend) {
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -167,6 +172,18 @@
         map, center: [0,20], zoom: 3,
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
+
+      // CAMS PM2.5 Imagery Layer (added as requested)
+      const camsPM25Layer = new ImageryLayer({
+        url: "https://tiledimageservices9.arcgis.com/z8gE404285UknAUx/arcgis/rest/services/CAMS_PM25_latest/ImageServer",
+        title: "CAMS PM2.5 Forecast",
+        opacity: 0.7,
+        popupTemplate: {
+          title: "CAMS PM2.5 Forecast",
+          content: "PM2.5 concentration: {Raster.ServicePixelValue.value} µg/m³"
+        }
+      });
+      map.add(camsPM25Layer);
 
       // Live PM2.5 (OpenAQ latest hour)
       const pm25Layer = new FeatureLayer({
@@ -213,7 +230,10 @@
       // Legend + init
       let legendWidget=null;
       view.whenLayerView(pm25Layer).then(()=>{
-        legendWidget = new Legend({ view, layerInfos:[{ layer: pm25Layer, title:"PM2.5 Air Quality (µg/m³)" }] });
+        legendWidget = new Legend({ view, layerInfos:[
+          { layer: pm25Layer, title:"PM2.5 Air Quality (µg/m³)" },
+          { layer: camsPM25Layer, title:"CAMS PM2.5 Forecast" }
+        ]});
         view.ui.add(legendWidget, "bottom-left");
         document.getElementById("loading").style.display="none";
         updateStatus();
@@ -295,6 +315,7 @@
       });
 
       document.getElementById("layerAQI").addEventListener("change", e=> pm25Layer.visible = e.target.checked);
+      document.getElementById("layerCAMS").addEventListener("change", e=> camsPM25Layer.visible = e.target.checked);
       document.getElementById("layerCities").addEventListener("change", e=> citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
 
