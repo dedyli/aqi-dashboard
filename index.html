@@ -48,10 +48,6 @@
     .tag.mod{background:#ffff00;color:#000}
     .tag.bad{background:#ff4444}
 
-    /* Basemap options */
-    .basemap-option{background:rgba(255,255,255,.1);padding:10px;margin:6px 0;border-radius:8px;text-align:center;cursor:pointer}
-    .basemap-option.active{background:#0079c1;font-weight:700}
-
     /* Legend */
     .esri-legend{background:rgba(255,255,255,.92)!important;border-radius:10px!important;box-shadow:0 8px 18px rgba(0,0,0,.25)!important}
 
@@ -70,6 +66,9 @@
     #composer{display:flex;border-top:1px solid rgba(255,255,255,.12)}
     #q{flex:1;padding:10px;border:0;background:#121212;color:#fff}
     #send{padding:10px 12px;border:0;background:#0079c1;color:#fff;font-weight:700;cursor:pointer}
+
+    /* Tiny status toast */
+    #overlayStatus{position:absolute;top:78px;right:12px;z-index:1002;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;display:none}
   </style>
 </head>
 <body>
@@ -97,7 +96,11 @@
     <div id="topCities"><div style="opacity:.85">Loading…</div></div>
 
     <h3>📈 Notes</h3>
-    <div style="opacity:.9;font-size:13px">Data: OpenAQ via Esri Living Atlas (latest ~hour). Values filtered to 0–500 µg/m³ and cities with ≥3 stations. CAMS layer provides additional global coverage including China.</div>
+    <div style="opacity:.9;font-size:13px">
+      • Live stations: OpenAQ via Esri Living Atlas<br>
+      • Modeled overlay: Open-Meteo (CAMS model)<br>
+      • Values are PM2.5 (μg/m³). Cities need ≥3 stations.
+    </div>
 
     <h3>ℹ️ Status</h3>
     <div id="status" style="opacity:.9;font-size:13px"></div>
@@ -117,16 +120,16 @@
 
     <h3>📊 Data Layers</h3>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>PM2.5 (OpenAQ Live)</span>
+      <span>PM2.5 Stations (OpenAQ)</span>
       <label><input type="checkbox" id="layerAQI" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>CAMS PM2.5 Imagery</span>
-      <label><input type="checkbox" id="layerCAMS" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>World Cities</span>
       <label><input type="checkbox" id="layerCities" checked> Visible</label>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+      <span>Modeled PM2.5 (Open-Meteo)</span>
+      <label><input type="checkbox" id="layerOM" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>Legend</span>
@@ -137,6 +140,7 @@
   <!-- Map -->
   <div id="viewDiv">
     <div id="loading">Loading map…</div>
+    <div id="overlayStatus"></div>
   </div>
 
   <!-- Floating Chat -->
@@ -147,7 +151,7 @@
     </div>
     <div id="chatBody">
       <div id="msgs">
-        <div class="bubble bot">Hi! Ask me about air quality (PM2.5/AQI). Try: "Top 5 polluted cities now", "What's PM2.5 in Hanoi?", or "Zoom to Delhi".</div>
+        <div class="bubble bot">Hi! Ask me about air quality (PM2.5/AQI). Try: “Top 5 polluted cities now”, “What’s PM2.5 in Hanoi?”, or “Zoom to Delhi”.</div>
       </div>
       <div id="composer">
         <input id="q" placeholder="Ask about PM2.5 / AQI…"/>
@@ -162,9 +166,10 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
-      "esri/layers/ImageryLayer",
-      "esri/widgets/Legend"
-    ], function(Map, MapView, FeatureLayer, ImageryLayer, Legend) {
+      "esri/layers/GeoJSONLayer",
+      "esri/widgets/Legend",
+      "esri/geometry/support/webMercatorUtils"
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, Legend, webMercatorUtils) {
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -173,162 +178,11 @@
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
-      // Open-Meteo PM2.5 Layer (using GraphicsLayer to display API data)
-      const openMeteoLayer = new GraphicsLayer({
-        title: "Open-Meteo PM2.5 (Global)",
-        visible: true
-      });
-      map.add(openMeteoLayer);
-
-      // Function to fetch and display Open-Meteo PM2.5 data
-      async function loadOpenMeteoData() {
-        try {
-          // Define a grid of points to fetch PM2.5 data
-          // Covering major cities and regions globally
-          const locations = [
-            // Asia - with emphasis on China
-            {lat: 39.9, lon: 116.4, name: "Beijing"},
-            {lat: 31.2, lon: 121.5, name: "Shanghai"},
-            {lat: 23.1, lon: 113.3, name: "Guangzhou"},
-            {lat: 30.6, lon: 114.3, name: "Wuhan"},
-            {lat: 34.3, lon: 108.9, name: "Xi'an"},
-            {lat: 29.6, lon: 106.5, name: "Chongqing"},
-            {lat: 36.7, lon: 117.0, name: "Jinan"},
-            {lat: 45.8, lon: 126.6, name: "Harbin"},
-            {lat: 41.8, lon: 123.4, name: "Shenyang"},
-            {lat: 38.0, lon: 114.5, name: "Shijiazhuang"},
-            {lat: 28.2, lon: 112.9, name: "Changsha"},
-            {lat: 22.5, lon: 114.1, name: "Hong Kong"},
-            // Other Asian cities
-            {lat: 28.6, lon: 77.2, name: "Delhi"},
-            {lat: 19.1, lon: 72.9, name: "Mumbai"},
-            {lat: 35.7, lon: 139.7, name: "Tokyo"},
-            {lat: 37.6, lon: 127.0, name: "Seoul"},
-            {lat: 13.8, lon: 100.5, name: "Bangkok"},
-            {lat: -6.2, lon: 106.8, name: "Jakarta"},
-            {lat: 1.3, lon: 103.8, name: "Singapore"},
-            {lat: 23.8, lon: 90.4, name: "Dhaka"},
-            {lat: 31.5, lon: 74.3, name: "Lahore"},
-            {lat: 24.9, lon: 67.1, name: "Karachi"},
-            // Europe
-            {lat: 51.5, lon: -0.1, name: "London"},
-            {lat: 48.9, lon: 2.4, name: "Paris"},
-            {lat: 52.5, lon: 13.4, name: "Berlin"},
-            {lat: 55.8, lon: 37.6, name: "Moscow"},
-            {lat: 40.4, lon: -3.7, name: "Madrid"},
-            {lat: 41.9, lon: 12.5, name: "Rome"},
-            // Americas
-            {lat: 40.7, lon: -74.0, name: "New York"},
-            {lat: 34.1, lon: -118.2, name: "Los Angeles"},
-            {lat: 19.4, lon: -99.1, name: "Mexico City"},
-            {lat: -23.5, lon: -46.6, name: "São Paulo"},
-            {lat: -34.6, lon: -58.4, name: "Buenos Aires"},
-            // Africa
-            {lat: 30.0, lon: 31.2, name: "Cairo"},
-            {lat: -1.3, lon: 36.8, name: "Nairobi"},
-            {lat: 6.5, lon: 3.4, name: "Lagos"},
-            {lat: -26.2, lon: 28.0, name: "Johannesburg"},
-            // Oceania
-            {lat: -33.9, lon: 151.2, name: "Sydney"},
-            {lat: -37.8, lon: 144.9, name: "Melbourne"}
-          ];
-
-          // Clear existing graphics
-          openMeteoLayer.removeAll();
-
-          // Fetch data for each location
-          for (const loc of locations) {
-            try {
-              const response = await fetch(
-                `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.lat}&longitude=${loc.lon}&current=pm2_5&timezone=auto`
-              );
-              
-              if (!response.ok) continue;
-              
-              const data = await response.json();
-              if (data.current && data.current.pm2_5 !== null) {
-                const pm25Value = data.current.pm2_5;
-                
-                // Determine color based on PM2.5 value
-                let color, size;
-                if (pm25Value <= 10) {
-                  color = [0, 228, 0, 0.8]; // Green
-                  size = 12;
-                } else if (pm25Value <= 25) {
-                  color = [255, 255, 0, 0.8]; // Yellow
-                  size = 14;
-                } else if (pm25Value <= 50) {
-                  color = [255, 126, 0, 0.8]; // Orange
-                  size = 16;
-                } else if (pm25Value <= 75) {
-                  color = [255, 0, 0, 0.8]; // Red
-                  size = 18;
-                } else if (pm25Value <= 100) {
-                  color = [143, 63, 151, 0.8]; // Purple
-                  size = 20;
-                } else {
-                  color = [126, 0, 35, 0.8]; // Maroon
-                  size = 22;
-                }
-
-                // Create graphic for this location
-                const point = {
-                  type: "point",
-                  longitude: loc.lon,
-                  latitude: loc.lat
-                };
-
-                const simpleMarkerSymbol = {
-                  type: "simple-marker",
-                  color: color,
-                  outline: {
-                    color: [255, 255, 255],
-                    width: 1.5
-                  },
-                  size: size
-                };
-
-                const pointGraphic = new Graphic({
-                  geometry: point,
-                  symbol: simpleMarkerSymbol,
-                  attributes: {
-                    location: loc.name,
-                    pm25: pm25Value,
-                    unit: "µg/m³"
-                  },
-                  popupTemplate: {
-                    title: "{location} (Open-Meteo)",
-                    content: `
-                      <div style="line-height:1.5">
-                        <b>PM2.5:</b> {pm25} {unit}<br>
-                        <b>Source:</b> Open-Meteo Air Quality API<br>
-                        <b>Updated:</b> ${new Date().toLocaleString()}
-                      </div>`
-                  }
-                });
-
-                openMeteoLayer.add(pointGraphic);
-              }
-            } catch (err) {
-              console.log(`Failed to fetch data for ${loc.name}:`, err);
-            }
-            
-            // Small delay to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          
-          console.log("Open-Meteo PM2.5 data loaded successfully");
-        } catch (error) {
-          console.error("Error loading Open-Meteo data:", error);
-        }
-      }
-
-      // Load Open-Meteo data when map is ready
-      view.when(() => {
-        loadOpenMeteoData();
-        // Refresh every 30 minutes
-        setInterval(loadOpenMeteoData, 30 * 60 * 1000);
-      });
+      const statusToast = (msg, ms=2200) => {
+        const el = document.getElementById("overlayStatus");
+        el.textContent = msg; el.style.display = "block";
+        clearTimeout(el._t); el._t = setTimeout(()=> el.style.display="none", ms);
+      };
 
       // Live PM2.5 (OpenAQ latest hour)
       const pm25Layer = new FeatureLayer({
@@ -372,23 +226,57 @@
       });
       map.add(citiesLayer);
 
+      // Modeled PM2.5 (Open-Meteo / CAMS) via Netlify function (GeoJSON points grid)
+      const openMeteoLayer = new GeoJSONLayer({
+        url: "/.netlify/functions/openmeteo-grid?lat1=18&lon1=73&lat2=54&lon2=135&step=0.5",
+        title: "Modeled PM2.5 (Open-Meteo / CAMS)",
+        copyright: "© Open-Meteo, CAMS/ECMWF",
+        renderer: {
+          type: "class-breaks",
+          field: "pm25",
+          classBreakInfos: [
+            { minValue: 0, maxValue: 10,   symbol: sm("#00e400", 6),  label: "Good (0–10 μg/m³)" },
+            { minValue: 10, maxValue: 25,  symbol: sm("#ffff00", 8),  label: "Moderate (10–25)" },
+            { minValue: 25, maxValue: 50,  symbol: sm("#ff7e00", 10), label: "USG (25–50)" },
+            { minValue: 50, maxValue: 75,  symbol: sm("#ff0000", 12), label: "Unhealthy (50–75)" },
+            { minValue: 75, maxValue: 100, symbol: sm("#8f3f97", 14), label: "Very Unhealthy (75–100)" },
+            { minValue: 100, maxValue: 9999, symbol: sm("#7e0023", 16), label: "Hazardous (100+)" }
+          ]
+        },
+        popupTemplate: {
+          title: "Modeled PM2.5",
+          content: (f) => {
+            const p = f.graphic.attributes || {};
+            const v = p.pm25 != null ? `${Math.round(p.pm25)} μg/m³` : "n/a";
+            const t = p.time ? new Date(p.time).toLocaleString() : "n/a";
+            return `PM2.5 (near-surface): <b>${v}</b><br>Time: ${t}<br>Source: Open-Meteo (CAMS model)`;
+          }
+        }
+      });
+      function sm(hex, size){
+        return { type:"simple-marker", color:hex, size, outline:{ color:"white", width:0.5 } };
+      }
+      map.add(openMeteoLayer);
+
       // Legend + init
       let legendWidget=null;
       view.whenLayerView(pm25Layer).then(()=>{
         legendWidget = new Legend({ view, layerInfos:[
-          { layer: pm25Layer, title:"PM2.5 Air Quality (µg/m³)" },
-          { layer: camsPM25Layer, title:"CAMS PM2.5 Forecast" }
+          { layer: pm25Layer, title:"PM2.5 (μg/m³) — Stations" },
+          { layer: openMeteoLayer, title:"PM2.5 (μg/m³) — Modeled" }
         ]});
         view.ui.add(legendWidget, "bottom-left");
         document.getElementById("loading").style.display="none";
         updateStatus();
         refreshTopCities();
         setInterval(refreshTopCities, 30*60*1000);
+        // initialize overlay from current view
+        refreshOpenMeteoFromView(true);
       });
 
       function updateStatus(){
         pm25Layer.queryFeatureCount().then(c=>{
-          document.getElementById("status").textContent = `✓ Live layer connected (${c.toLocaleString()} stations)`;
+          document.getElementById("status").textContent = `✓ Stations connected (${c.toLocaleString()} points). Modeled overlay on.`;
         }).catch(()=>{ document.getElementById("status").textContent = "⚠️ Connected, but could not count features."; });
       }
 
@@ -424,7 +312,7 @@
         }catch(e){ console.error(e); box.innerHTML = '<div style="opacity:.85">Failed to load top cities.</div>'; }
       }
 
-      // Zoom helper (also used by chatbot action)
+      // Zoom helper (used by chat too)
       async function zoomToCity(city, country){
         const esc=s=>String(s).replace(/'/g,"''");
         const q = pm25Layer.createQuery();
@@ -438,7 +326,7 @@
       }
       window.zoomToCity = zoomToCity;
 
-      /* UI wiring */
+      /* Panels */
       function togglePanel(id, cls){
         const panel = document.getElementById(id);
         const viewDiv = document.getElementById("viewDiv");
@@ -459,10 +347,11 @@
         });
       });
 
+      // Layer toggles
       document.getElementById("layerAQI").addEventListener("change", e=> pm25Layer.visible = e.target.checked);
-      document.getElementById("layerCAMS").addEventListener("change", e=> camsPM25Layer.visible = e.target.checked);
       document.getElementById("layerCities").addEventListener("change", e=> citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
+      document.getElementById("layerOM").addEventListener("change", e=> openMeteoLayer.visible = e.target.checked);
 
       // Simple search
       function performSearch(){
@@ -492,9 +381,39 @@
           view.resize();
         }
       });
+
+      // --- Open-Meteo overlay: refresh by view bbox (throttled) ---
+      let refreshTimer = null;
+      function refreshOpenMeteoFromView(initial=false){
+        if (refreshTimer && !initial) return;
+        refreshTimer = setTimeout(() => {
+          refreshTimer = null;
+          const extent = view.extent;
+          if (!extent) return;
+          const ge = webMercatorUtils.webMercatorToGeographic(extent);
+          const lat1 = ge.ymin.toFixed(3);
+          const lon1 = ge.xmin.toFixed(3);
+          const lat2 = ge.ymax.toFixed(3);
+          const lon2 = ge.xmax.toFixed(3);
+
+          const w = Math.abs(ge.xmax - ge.xmin);
+          const h = Math.abs(ge.ymax - ge.ymin);
+          const coarse = Math.max(w, h) > 60 ? 1.5 : Math.max(w, h) > 25 ? 1.0 : 0.5;
+
+          const newUrl = `/.netlify/functions/openmeteo-grid?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&step=${coarse}`;
+          if (openMeteoLayer.url !== newUrl) {
+            openMeteoLayer.url = newUrl;
+            openMeteoLayer.refresh();
+            statusToast(`Open-Meteo overlay updated (step ${coarse}°)`);
+          }
+        }, initial ? 200 : 900);
+      }
+      view.when(() => {
+        view.watch("extent", () => refreshOpenMeteoFromView());
+      });
     });
 
-    /************ CHATBOT (drag + minimize + history + server call) ************/
+    /************ CHATBOT (drag + minimize + history + server call; XSS-safe) ************/
     (function(){
       const chat = document.getElementById("chat");
       const head = document.getElementById("chatHead");
@@ -530,7 +449,8 @@
 
       function addBubble(text, who="bot"){
         const d=document.createElement("div");
-        d.className=`bubble ${who}`; d.innerHTML=text;
+        d.className=`bubble ${who}`;
+        d.textContent = text; // XSS-safe
         msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
       }
 
@@ -552,8 +472,8 @@
             body: JSON.stringify({ userMessage: text, history: chatHistory.slice(-8) })
           });
           const data = await resp.json();
-          const reply = data.reply || "Sorry, I couldn't respond.";
-          thinking.innerHTML = reply;
+          const reply = (typeof data.reply === "string" && data.reply.trim()) ? data.reply : "The server returned no text.";
+          thinking.textContent = reply;
           chatHistory.push({ role:"assistant", content: reply });
 
           if(data.action && data.action.type==="zoomTo" && data.action.city){
@@ -561,7 +481,7 @@
           }
         }catch(err){
           console.error(err);
-          thinking.innerHTML = "Error connecting to server.";
+          thinking.textContent = "Error connecting to server.";
         }
       }
       send.addEventListener("click", sendMsg);
