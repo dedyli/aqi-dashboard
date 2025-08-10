@@ -145,7 +145,7 @@
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>Modeled PM2.5 (Open-Meteo)</span>
-      <label><input type="checkbox" id="layerOM" checked> Visible</label>
+      <label><input type="checkbox" id="layerOM"> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span><b>Observed PM2.5 (IQAir)</b></span>
@@ -195,7 +195,7 @@
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
         container: "viewDiv",
-        map, center: [105, 35], zoom: 4, // center roughly on China as default
+        map, center: [105, 35], zoom: 4, // China
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
@@ -207,7 +207,7 @@
         clearTimeout(el._t); el._t = setTimeout(()=> el.style.display="none", ms);
       };
 
-      /* --- OpenAQ station layer (unchanged) --- */
+      /* --- OpenAQ stations --- */
       const pm25Layer = new FeatureLayer({
         url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title: "PM2.5 (OpenAQ, latest hour)",
@@ -237,7 +237,7 @@
       });
       map.add(pm25Layer);
 
-      /* --- World cities (unchanged) --- */
+      /* --- World cities --- */
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
@@ -250,13 +250,15 @@
       });
       map.add(citiesLayer);
 
-      /* --- Open-Meteo modeled overlay (kept) --- */
+      /* --- Helpers --- */
       function sm(hex, size){ return { type:"simple-marker", color:hex, size, outline:{ color:"white", width:0.5 } }; }
+
+      /* --- Open-Meteo modeled (kept but default OFF) --- */
       const openMeteoLayer = new GeoJSONLayer({
-        url: "/.netlify/functions/openmeteo-grid?lat1=20&lon1=100&lat2=25&lon2=105&step=1",
+        url: "/.netlify/functions/openmeteo-grid?lat1=30&lon1=95&lat2=42&lon2=125&step=1",
         title: "Modeled PM2.5 (Open-Meteo / CAMS)",
         copyright: "© Open-Meteo, CAMS/ECMWF",
-        visible: true,
+        visible: false,    // togglable from the panel
         renderer: {
           type: "class-breaks",
           field: "pm25",
@@ -283,21 +285,32 @@
       openMeteoLayer.on("error", (e) => console.error("Open-Meteo error:", e));
       map.add(openMeteoLayer);
 
-      /* --- NEW: IQAir nearest-city overlay --- */
+      /* --- IQAir nearest-city overlay (with explicit schema) --- */
       const iqairLayer = new GeoJSONLayer({
-        url: "/.netlify/functions/iqair-grid?lat1=30&lon1=95&lat2=42&lon2=125&step=1", // initial China-focused bbox
+        url: "/.netlify/functions/iqair-grid?lat1=30&lon1=95&lat2=42&lon2=125&step=1", // China-focused bbox
         title: "Observed PM2.5 (IQAir Nearest City)",
         copyright: "© IQAir",
         visible: true,
+        objectIdField: "oid",
+        outFields: ["*"],
+        fields: [
+          { name: "oid",     type: "oid"    },
+          { name: "pm25",    type: "double" },
+          { name: "time",    type: "string" },
+          { name: "city",    type: "string" },
+          { name: "state",   type: "string" },
+          { name: "country", type: "string" },
+          { name: "source",  type: "string" }
+        ],
         renderer: {
           type: "class-breaks",
           field: "pm25",
           classBreakInfos: [
-            { minValue: 0, maxValue: 10,   symbol: sm("#00e400", 8),  label: "Good (0–10 μg/m³)" },
-            { minValue: 10, maxValue: 25,  symbol: sm("#ffff00",10),  label: "Moderate (10–25)" },
-            { minValue: 25, maxValue: 50,  symbol: sm("#ff7e00",12),  label: "USG (25–50)" },
-            { minValue: 50, maxValue: 75,  symbol: sm("#ff0000",14),  label: "Unhealthy (50–75)" },
-            { minValue: 75, maxValue: 100, symbol: sm("#8f3f97",16),  label: "Very Unhealthy (75–100)" },
+            { minValue: 0,  maxValue: 10,   symbol: sm("#00e400", 8),  label: "Good (0–10 μg/m³)" },
+            { minValue: 10, maxValue: 25,   symbol: sm("#ffff00",10),  label: "Moderate (10–25)" },
+            { minValue: 25, maxValue: 50,   symbol: sm("#ff7e00",12),  label: "USG (25–50)" },
+            { minValue: 50, maxValue: 75,   symbol: sm("#ff0000",14),  label: "Unhealthy (50–75)" },
+            { minValue: 75, maxValue: 100,  symbol: sm("#8f3f97",16),  label: "Very Unhealthy (75–100)" },
             { minValue: 100, maxValue: 9999, symbol: sm("#7e0023",18), label: "Hazardous (100+)" }
           ]
         },
@@ -309,7 +322,7 @@
           },
           content: (f) => {
             const p = f.graphic?.attributes || {};
-            const v = p.pm25 != null ? `${Math.round(p.pm25)} μg/m³` : "n/a";
+            const v = Number.isFinite(p.pm25) ? `${Math.round(p.pm25)} μg/m³` : "n/a";
             const t = p.time ? new Date(p.time).toLocaleString() : "n/a";
             return `PM2.5: <b>${v}</b><br>Time: ${t}<br>Source: IQAir Nearest City`;
           }
@@ -323,29 +336,29 @@
       let legendWidget=null;
       view.whenLayerView(pm25Layer).then(()=>{
         legendWidget = new Legend({ view, layerInfos:[
-          { layer: pm25Layer,  title:"PM2.5 (μg/m³) — Stations" },
+          { layer: pm25Layer,     title:"PM2.5 (μg/m³) — Stations" },
           { layer: openMeteoLayer, title:"PM2.5 (μg/m³) — Modeled" },
-          { layer: iqairLayer, title:"PM2.5 (μg/m³) — IQAir Nearest City" }
+          { layer: iqairLayer,    title:"PM2.5 (μg/m³) — IQAir Nearest City" }
         ]});
         view.ui.add(legendWidget, "bottom-left");
         document.getElementById("loading").style.display="none";
         updateStatus();
         refreshTopCities();
         setInterval(refreshTopCities, 30*60*1000);
-        refreshOM(true);
         refreshIQ(true);
+        refreshOM(true);
       });
 
       function updateStatus(){
         pm25Layer.queryFeatureCount().then(c=>{
           document.getElementById("status").textContent =
-            `✓ Stations connected (${c.toLocaleString()} points). Modeled + IQAir overlays on.`;
+            `✓ Stations connected (${c.toLocaleString()} points). IQAir overlay on.`;
         }).catch(()=>{
           document.getElementById("status").textContent = "⚠️ Connected, but could not count features.";
         });
       }
 
-      /* --- Top 10 polluted cities (unchanged) --- */
+      /* --- Top 10 polluted cities --- */
       async function refreshTopCities(){
         const box = document.getElementById("topCities");
         box.innerHTML = '<div style="opacity:.85">Updating…</div>';
@@ -453,9 +466,10 @@
         }
       });
 
-      /* --- Open-Meteo overlay refresh by bbox --- */
+      /* --- Open-Meteo refresh by bbox --- */
       let refreshTimerOM = null;
       function refreshOM(initial=false){
+        if (!openMeteoLayer.visible) return; // only when layer is on
         if (refreshTimerOM && !initial) return;
         refreshTimerOM = setTimeout(() => {
           refreshTimerOM = null;
@@ -472,7 +486,7 @@
         }, initial ? 200 : 900);
       }
 
-      /* --- IQAir overlay refresh by bbox (favor China; smaller step) --- */
+      /* --- IQAir refresh by bbox --- */
       let refreshTimerIQ = null;
       function refreshIQ(initial=false){
         if (refreshTimerIQ && !initial) return;
@@ -483,7 +497,7 @@
           const lat1 = ge.ymin.toFixed(3), lon1 = ge.xmin.toFixed(3);
           const lat2 = ge.ymax.toFixed(3), lon2 = ge.xmax.toFixed(3);
           const span = Math.max(Math.abs(ge.xmax - ge.xmin), Math.abs(ge.ymax - ge.ymin));
-          const step = span > 30 ? 1.5 : (span > 12 ? 1.0 : 0.75); // keep calls reasonable
+          const step = span > 30 ? 1.5 : (span > 12 ? 1.0 : 0.75);
           const newUrl = `/.netlify/functions/iqair-grid?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&step=${step}`;
           if (iqairLayer.url !== newUrl) iqairLayer.url = newUrl;
           iqairLayer.refresh();
@@ -492,13 +506,13 @@
       }
 
       view.when(() => {
-        refreshOM(true);
         refreshIQ(true);
-        view.watch("extent", () => { refreshOM(); refreshIQ(); });
+        // refresh OM only if user enables it
+        view.watch("extent", () => { refreshIQ(); refreshOM(); });
       });
     });
 
-    /************ CHATBOT (unchanged) ************/
+    /************ CHATBOT (unchanged stub) ************/
     (function(){
       const chat = document.getElementById("chat");
       const head = document.getElementById("chatHead");
