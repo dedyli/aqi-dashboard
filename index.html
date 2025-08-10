@@ -16,7 +16,7 @@
     /* Header */
     .header{background:linear-gradient(135deg,#8B2B8B 0%,#2D2D2D 100%);height:70px;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;box-shadow:0 2px 10px rgba(0,0,0,.3);z-index:1001;position:relative}
     .header-left{display:flex;align-items:center;gap:14px}
-    .hamburger,.settings{background:rgba(255,255,255,.22);border:0;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}
+    .hamburger,.settings{background:rgba(255,255,255,.22);border:0;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .2s}
     .hamburger:hover,.settings:hover{background:rgba(255,255,255,.32)}
     .header h1{font-size:16px;font-weight:700}
     .header h2{font-size:13px;opacity:.9;font-style:italic;font-weight:400}
@@ -40,7 +40,7 @@
     .search-input::placeholder{color:rgba(255,255,255,.75)}
     .search-btn{width:100%;padding:12px;background:#0079c1;border:0;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
 
-    /* City list */
+    /* Top cities list */
     .city-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,.12);cursor:pointer}
     .city-item:hover{background:rgba(255,255,255,.06)}
     .tag{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
@@ -51,8 +51,26 @@
     /* Legend */
     .esri-legend{background:rgba(255,255,255,.92)!important;border-radius:10px!important;box-shadow:0 8px 18px rgba(0,0,0,.25)!important}
 
-    /* Loading */
+    /* Basemap options (hover restored) */
+    .basemap-option{
+      background:rgba(255,255,255,.12);
+      padding:10px 12px;margin:8px 0;border-radius:8px;
+      cursor:pointer;user-select:none;transition:transform .1s, background .2s, box-shadow .2s
+    }
+    .basemap-option:hover{
+      background:rgba(255,255,255,.22);
+      transform:translateY(-1px);
+      box-shadow:0 4px 10px rgba(0,0,0,.25);
+    }
+    .basemap-option.active{
+      background:#0079c1;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+      font-weight:700;
+    }
+
+    /* Loading + tiny toast */
     #loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#8B2B8B}
+    #overlayStatus{position:absolute;top:78px;right:12px;z-index:1002;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;display:none}
 
     /* Floating Chat (draggable + minimizable) */
     #chat{position:fixed;right:20px;bottom:20px;width:340px;max-height:70vh;background:#1f1f1f;color:#f5f5f5;border:1px solid rgba(255,255,255,.12);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.35);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
@@ -66,9 +84,6 @@
     #composer{display:flex;border-top:1px solid rgba(255,255,255,.12)}
     #q{flex:1;padding:10px;border:0;background:#121212;color:#fff}
     #send{padding:10px 12px;border:0;background:#0079c1;color:#fff;font-weight:700;cursor:pointer}
-
-    /* Tiny status toast */
-    #overlayStatus{position:absolute;top:78px;right:12px;z-index:1002;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;display:none}
   </style>
 </head>
 <body>
@@ -168,8 +183,9 @@
       "esri/layers/FeatureLayer",
       "esri/layers/GeoJSONLayer",
       "esri/widgets/Legend",
-      "esri/geometry/support/webMercatorUtils"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, Legend, webMercatorUtils) {
+      "esri/geometry/support/webMercatorUtils",
+      "esri/config"
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, Legend, webMercatorUtils, esriConfig) {
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -178,7 +194,10 @@
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
-      const statusToast = (msg, ms=2200) => {
+      // allow same-origin explicitly (not required, but safe)
+      try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
+
+      const toast = (msg, ms=2200) => {
         const el = document.getElementById("overlayStatus");
         el.textContent = msg; el.style.display = "block";
         clearTimeout(el._t); el._t = setTimeout(()=> el.style.display="none", ms);
@@ -226,21 +245,25 @@
       });
       map.add(citiesLayer);
 
-      // Modeled PM2.5 (Open-Meteo / CAMS) via Netlify function (GeoJSON points grid)
+      // Modeled PM2.5 (Open-Meteo / CAMS) via Netlify function (GeoJSON grid)
+      function sm(hex, size){
+        return { type:"simple-marker", color:hex, size, outline:{ color:"white", width:0.5 } };
+      }
       const openMeteoLayer = new GeoJSONLayer({
-        url: "/.netlify/functions/openmeteo-grid?lat1=18&lon1=73&lat2=54&lon2=135&step=0.5",
+        url: "/.netlify/functions/openmeteo-grid?lat1=20&lon1=100&lat2=25&lon2=105&step=1", // placeholder
         title: "Modeled PM2.5 (Open-Meteo / CAMS)",
         copyright: "© Open-Meteo, CAMS/ECMWF",
+        visible: true,
         renderer: {
           type: "class-breaks",
           field: "pm25",
           classBreakInfos: [
-            { minValue: 0, maxValue: 10,   symbol: sm("#00e400", 6),  label: "Good (0–10 μg/m³)" },
-            { minValue: 10, maxValue: 25,  symbol: sm("#ffff00", 8),  label: "Moderate (10–25)" },
-            { minValue: 25, maxValue: 50,  symbol: sm("#ff7e00", 10), label: "USG (25–50)" },
-            { minValue: 50, maxValue: 75,  symbol: sm("#ff0000", 12), label: "Unhealthy (50–75)" },
-            { minValue: 75, maxValue: 100, symbol: sm("#8f3f97", 14), label: "Very Unhealthy (75–100)" },
-            { minValue: 100, maxValue: 9999, symbol: sm("#7e0023", 16), label: "Hazardous (100+)" }
+            { minValue: 0, maxValue: 10,   symbol: sm("#00e400", 8),  label: "Good (0–10 μg/m³)" },
+            { minValue: 10, maxValue: 25,  symbol: sm("#ffff00",10),  label: "Moderate (10–25)" },
+            { minValue: 25, maxValue: 50,  symbol: sm("#ff7e00",12),  label: "USG (25–50)" },
+            { minValue: 50, maxValue: 75,  symbol: sm("#ff0000",14),  label: "Unhealthy (50–75)" },
+            { minValue: 75, maxValue: 100, symbol: sm("#8f3f97",16),  label: "Very Unhealthy (75–100)" },
+            { minValue: 100, maxValue: 9999, symbol: sm("#7e0023",18), label: "Hazardous (100+)" }
           ]
         },
         popupTemplate: {
@@ -253,12 +276,12 @@
           }
         }
       });
-      function sm(hex, size){
-        return { type:"simple-marker", color:hex, size, outline:{ color:"white", width:0.5 } };
-      }
+      openMeteoLayer.on("layerview-create-error", (e) => console.error("Open-Meteo layerview error:", e));
+      openMeteoLayer.on("error", (e) => console.error("Open-Meteo error:", e));
+      openMeteoLayer.when(() => console.log("Open-Meteo layer ready"), (err)=>console.error(err));
       map.add(openMeteoLayer);
 
-      // Legend + init
+      // Legend
       let legendWidget=null;
       view.whenLayerView(pm25Layer).then(()=>{
         legendWidget = new Legend({ view, layerInfos:[
@@ -270,8 +293,7 @@
         updateStatus();
         refreshTopCities();
         setInterval(refreshTopCities, 30*60*1000);
-        // initialize overlay from current view
-        refreshOpenMeteoFromView(true);
+        refreshOM(true); // first fetch for Open-Meteo
       });
 
       function updateStatus(){
@@ -280,7 +302,7 @@
         }).catch(()=>{ document.getElementById("status").textContent = "⚠️ Connected, but could not count features."; });
       }
 
-      // Top-10 polluted cities (sane values + ≥3 stations)
+      // Top 10 polluted cities
       async function refreshTopCities(){
         const box = document.getElementById("topCities");
         box.innerHTML = '<div style="opacity:.85">Updating…</div>';
@@ -312,7 +334,7 @@
         }catch(e){ console.error(e); box.innerHTML = '<div style="opacity:.85">Failed to load top cities.</div>'; }
       }
 
-      // Zoom helper (used by chat too)
+      // Zoom helper (also used by chat)
       async function zoomToCity(city, country){
         const esc=s=>String(s).replace(/'/g,"''");
         const q = pm25Layer.createQuery();
@@ -339,6 +361,7 @@
       document.getElementById("hamburgerBtn").addEventListener("click", ()=>togglePanel("sidebar","sidebar-open"));
       document.getElementById("settingsBtn").addEventListener("click", ()=>togglePanel("settingsPanel","settings-open"));
 
+      // Basemap picker with active + hover
       document.querySelectorAll(".basemap-option").forEach(opt=>{
         opt.addEventListener("click", function(){
           map.basemap = this.dataset.basemap;
@@ -353,7 +376,7 @@
       document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
       document.getElementById("layerOM").addEventListener("change", e=> openMeteoLayer.visible = e.target.checked);
 
-      // Simple search
+      // Quick search
       function performSearch(){
         const q = document.getElementById("searchInput").value.toLowerCase().trim();
         if(!q) return;
@@ -384,33 +407,28 @@
 
       // --- Open-Meteo overlay: refresh by view bbox (throttled) ---
       let refreshTimer = null;
-      function refreshOpenMeteoFromView(initial=false){
+      function refreshOM(initial=false){
         if (refreshTimer && !initial) return;
         refreshTimer = setTimeout(() => {
           refreshTimer = null;
-          const extent = view.extent;
-          if (!extent) return;
-          const ge = webMercatorUtils.webMercatorToGeographic(extent);
-          const lat1 = ge.ymin.toFixed(3);
-          const lon1 = ge.xmin.toFixed(3);
-          const lat2 = ge.ymax.toFixed(3);
-          const lon2 = ge.xmax.toFixed(3);
+          if (!view.extent) return;
+          const ge = webMercatorUtils.webMercatorToGeographic(view.extent);
+          const lat1 = ge.ymin.toFixed(3), lon1 = ge.xmin.toFixed(3);
+          const lat2 = ge.ymax.toFixed(3), lon2 = ge.xmax.toFixed(3);
 
-          const w = Math.abs(ge.xmax - ge.xmin);
-          const h = Math.abs(ge.ymax - ge.ymin);
-          const coarse = Math.max(w, h) > 60 ? 1.5 : Math.max(w, h) > 25 ? 1.0 : 0.5;
+          const span = Math.max(Math.abs(ge.xmax - ge.xmin), Math.abs(ge.ymax - ge.ymin));
+          const step = span > 60 ? 1.5 : (span > 25 ? 1.0 : 0.5);
 
-          const newUrl = `/.netlify/functions/openmeteo-grid?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&step=${coarse}`;
+          const newUrl = `/.netlify/functions/openmeteo-grid?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&step=${step}`;
           if (openMeteoLayer.url !== newUrl) {
+            console.log("Open-Meteo URL ->", newUrl);
             openMeteoLayer.url = newUrl;
-            openMeteoLayer.refresh();
-            statusToast(`Open-Meteo overlay updated (step ${coarse}°)`);
           }
+          openMeteoLayer.refresh(); // force fetch
+          toast(`Open-Meteo overlay updated (step ${step}°)`);
         }, initial ? 200 : 900);
       }
-      view.when(() => {
-        view.watch("extent", () => refreshOpenMeteoFromView());
-      });
+      view.when(() => { refreshOM(true); view.watch("extent", () => refreshOM()); });
     });
 
     /************ CHATBOT (drag + minimize + history + server call; XSS-safe) ************/
@@ -422,7 +440,7 @@
       const msgs = document.getElementById("msgs");
       const q = document.getElementById("q");
       const send = document.getElementById("send");
-      const chatHistory = []; // {role:'user'|'assistant', content:string}
+      const chatHistory = [];
 
       // Drag
       let drag=false, offX=0, offY=0;
@@ -461,7 +479,6 @@
         thinking.className="bubble bot"; thinking.textContent="Thinking…";
         msgs.appendChild(thinking); msgs.scrollTop = msgs.scrollHeight;
 
-        // keep short history (last 8 turns)
         chatHistory.push({ role:"user", content:text });
 
         try{
