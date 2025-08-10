@@ -84,20 +84,30 @@ exports.handler = async (event) => {
     // Grid spacing in degrees (smaller = denser)
     const step = clamp(parseFloat(q.step ?? 0.5), 0.25, 2);
 
-    // Build a simple lat/lon grid inside the bbox
+    // [CORRECTED] Build a simple lat/lon grid inside the bbox with a robust safety check
     const lats = [];
     const lons = [];
+    const MAX_POINTS = 400; // Define a constant for the limit
+
     for (let lat = Math.min(lat1, lat2); lat <= Math.max(lat1, lat2) + 1e-9; lat += step) {
       for (let lon = Math.min(lon1, lon2); lon <= Math.max(lon1, lon2) + 1e-9; lon += step) {
+        // Check the limit on *every iteration* to prevent a crash
+        if (lats.length >= MAX_POINTS) {
+          break; // Exit the inner loop
+        }
         lats.push(+lat.toFixed(3));
         lons.push(+lon.toFixed(3));
       }
+      if (lats.length >= MAX_POINTS) {
+        break; // Exit the outer loop
+      }
     }
 
-    // Keep it sane for serverless + browser
-    if (lats.length > 400) {
-      return geo({ features: [], warning: `Grid too dense (${lats.length} points). Increase step or zoom in.` });
+    // Return a warning if the limit was reached, instead of crashing.
+    if (lats.length >= MAX_POINTS) {
+      return geo({ features: [], warning: `Grid too dense (${lats.length}+ points). Increase step or zoom in.` });
     }
+    
     if (lats.length === 0) {
         return geo({ features: [] });
     }
