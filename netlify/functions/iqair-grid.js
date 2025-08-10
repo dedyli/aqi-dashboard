@@ -1,20 +1,22 @@
 // netlify/functions/iqair-grid.js
-// Fetches PM2.5 from IQAir nearest_city for a lat/lon grid.
+// IQAir nearest_city -> GeoJSON points (PM2.5). Safe for ArcGIS GeoJSONLayer.
 
-const API_KEY = "425836df-81a6-4b30-bafb-e97ceac7401c";
+const API_KEY_FALLBACK = "425836df-81a6-4b30-bafb-e97ceac7401c"; // used only if env var missing
+const HOST = "https://api.airvisual.com/v2/nearest_city";
 
-function clamp(v, lo, hi) { v = Number.isFinite(+v) ? +v : lo; return Math.max(lo, Math.min(hi, v)); }
-function safeNum(v, fb = undefined) { const n = Number(v); return Number.isFinite(n) ? n : fb; }
-function geo({ features, error, warning }) {
-  const body = { type: "FeatureCollection", features: features || [] };
-  if (error) body.error = error;
+function clamp(v, lo, hi){ v = Number.isFinite(+v) ? +v : lo; return Math.max(lo, Math.min(hi, v)); }
+function safeNum(v, fb = null){ const n = Number(v); return Number.isFinite(n) ? n : fb; }
+function geo({ features, warning, error }){
+  const body = { type:"FeatureCollection", features: features || [] };
   if (warning) body.warning = warning;
+  if (error) body.error = error;
   return {
-    statusCode: 200,
+    statusCode: 200, // keep 200 so GeoJSONLayer renders even with partial data
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS"
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Cache-Control": "public, max-age=60"
     },
     body: JSON.stringify(body)
   };
@@ -34,53 +36,79 @@ exports.handler = async (event) => {
 
   try {
     const q = event.queryStringParameters || {};
-    const lat1 = parseFloat(q.lat1 ?? 5);
-    const lon1 = parseFloat(q.lon1 ?? 70);
-    const lat2 = parseFloat(q.lat2 ?? 55);
-    const lon2 = parseFloat(q.lon2 ?? 140);
-    const step = clamp(parseFloat(q.step ?? 1), 0.5, 5);
+    const key = process.env.IQAIR_API_KEY || API_KEY_FALLBACK;
 
-    const lats = [];
-    const lons = [];
-    const MAX_POINTS = 50; // IQAir free tier is rate-limited
+    // Extent from query (map bbox). Default roughly around East Asia.
+    const lat1 = parseFloat(q.lat1 ?? 20);
+    const lon1 = parseFloat(q.lon1 ?? 95);
+    const lat2 = parseFloat(q.lat2 ?? 45);
+    const lon2 = parseFloat(q.lon2 ?? 125);
 
+    // Step: smaller -> denser grid -> more API calls (watch rate limits)
+    const step = clamp(parseFloat(q.step ?? 1.0), 0.5, 3.0);
+
+    // Build grid with cap to avoid rate limits
+    const MAX_POINTS = 60;   // keep modest; IQAir free tier is rate-limited
+    const pts = [];
     for (let lat = Math.min(lat1, lat2); lat <= Math.max(lat1, lat2) + 1e-9; lat += step) {
       for (let lon = Math.min(lon1, lon2); lon <= Math.max(lon1, lon2) + 1e-9; lon += step) {
-        if (lats.length >= MAX_POINTS) break;
-        lats.push(+lat.toFixed(3));
-        lons.push(+lon.toFixed(3));
+        if (pts.length >= MAX_POINTS) break;
+        pts.push([+lon.toFixed(3), +lat.toFixed(3)]); // [lon, lat]
       }
-      if (lats.length >= MAX_POINTS) break;
+      if (pts.length >= MAX_POINTS) break;
     }
 
-    const features = [];
-    const warnings = [];
+    if (pts.length === 0) return geo({ features: [], warning: "Empty extent." });
 
-    for (let i = 0; i < lats.length; i++) {
+    const features = [];
+    const failures = [];
+
+    // Query sequentially to play nice with rate limits
+    for (let i = 0; i < pts.length; i++) {
+      const [lon, lat] = pts[i];
+      const url = `${HOST}?lat=${lat}&lon=${lon}&key=${encodeURIComponent(key)}`;
+
       try {
-        const url = `https://api.airvisual.com/v2/nearest_city?lat=${lats[i]}&lon=${lons[i]}&key=${API_KEY}`;
         const r = await fetch(url);
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        if (!r.ok) {
+          const txt = await r.text().catch(() => "");
+          failures.push(`${lat},${lon}: ${r.status} ${r.statusText}${txt ? " " + txt : ""}`);
+          continue;
+        }
         const j = await r.json();
-        const pm = safeNum(j?.data?.current?.pollution?.pm2_5, null);
+
+        // Expected shape (simplified):
+        // { status: "success", data: { city, state, country, location:{coordinates:[lon,lat]}, current:{pollution:{pm2_5, ts}} } }
+        const d = j?.data || {};
+        const loc = d?.location?.coordinates;
+        const coords = Array.isArray(loc) && loc.length >= 2 ? [safeNum(loc[0]), safeNum(loc[1])] : [lon, lat];
+
+        const pm = safeNum(d?.current?.pollution?.pm2_5);
         features.push({
           type: "Feature",
-          geometry: { type: "Point", coordinates: [lons[i], lats[i]] },
+          geometry: { type: "Point", coordinates: coords },
           properties: {
             pm25: pm,
-            time: j?.data?.current?.pollution?.ts || null,
-            city: j?.data?.city || "",
-            country: j?.data?.country || "",
+            time: d?.current?.pollution?.ts || null,
+            city: d?.city || "",
+            state: d?.state || "",
+            country: d?.country || "",
             source: "IQAir Nearest City"
           }
         });
+
+        // tiny delay to be gentle (optional)
+        await new Promise(res => setTimeout(res, 60));
       } catch (err) {
-        warnings.push(`Point ${lats[i]},${lons[i]} failed: ${err.message}`);
+        failures.push(`${lat},${lon}: ${err.message}`);
       }
     }
 
-    return geo({ features, warning: warnings.length ? warnings.join(" | ") : undefined });
+    return geo({
+      features,
+      warning: failures.length ? `Some points failed (${failures.length}/${pts.length}).` : undefined
+    });
   } catch (e) {
-    return geo({ features: [], error: e.message });
+    return geo({ features: [], error: e.message || "Unknown error" });
   }
 };
