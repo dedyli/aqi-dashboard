@@ -1,10 +1,15 @@
 // netlify/functions/openmeteo-grid.js
-// Returns GeoJSON points of PM2.5 by letting Open-Meteo auto-select the best model.
+// Returns GeoJSON points with near-surface PM2.5 by letting Open-Meteo auto-select the best model.
 
-function clamp(v, lo, hi){ v = Number.isFinite(+v) ? +v : lo; return Math.max(lo, Math.min(hi, v)); }
-function safeNum(v, fb = undefined){ const n = Number(v); return Number.isFinite(n) ? n : fb; }
-
-function geo({ features, error, warning }, status = 200){
+function clamp(v, lo, hi) {
+  v = Number.isFinite(+v) ? +v : lo;
+  return Math.max(lo, Math.min(hi, v));
+}
+function safeNum(v, fb = undefined) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fb;
+}
+function geo({ features, error, warning }, status = 200) {
   const body = { type: "FeatureCollection", features: features || [] };
   if (error) body.error = error;
   if (warning) body.warning = warning;
@@ -21,6 +26,18 @@ function geo({ features, error, warning }, status = 200){
 }
 
 exports.handler = async (event) => {
+  // Handle CORS preflight just in case
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    };
+  }
+
   try {
     const q = event.queryStringParameters || {};
 
@@ -33,7 +50,7 @@ exports.handler = async (event) => {
     // Grid spacing in degrees (smaller = denser)
     const step = clamp(parseFloat(q.step ?? 0.5), 0.25, 2);
 
-    // Build a simple lat/lon grid inside the bbox with a safety cap
+    // Build grid safely
     const lats = [];
     const lons = [];
     const MAX_POINTS = 400;
@@ -52,9 +69,9 @@ exports.handler = async (event) => {
     }
     if (lats.length === 0) return geo({ features: [] });
 
-    // Let Open-Meteo auto-select model (no &domains=…)
+    // Correct host for Open-Meteo air quality
     const url =
-      "https://api.open-meteo.com/v1/air-quality" +
+      "https://air-quality-api.open-meteo.com/v1/air-quality" +
       `?latitude=${lats.join(",")}` +
       `&longitude=${lons.join(",")}` +
       `&hourly=pm2_5` +
@@ -63,7 +80,7 @@ exports.handler = async (event) => {
     console.log(`Fetching Open-Meteo hourly data for ${lats.length} points...`);
     const r = await fetch(url);
     if (!r.ok) {
-      const errorText = await r.text().catch(()=> "");
+      const errorText = await r.text().catch(() => "");
       console.error("Open-Meteo fetch failed:", r.status, r.statusText, errorText);
       return geo({ features: [], error: `Open-Meteo API Error: ${r.status} ${r.statusText}` }, 502);
     }
@@ -71,8 +88,7 @@ exports.handler = async (event) => {
     const j = await r.json();
     const features = [];
 
-    // Defensive extraction — handle both 2D and 1D shapes
-    // Expected: j.latitude[], j.longitude[], j.hourly.time[], j.hourly.pm2_5[…]
+    // Defensive parsing
     const latArr = Array.isArray(j?.latitude) ? j.latitude : (j?.latitude != null ? [j.latitude] : []);
     const lonArr = Array.isArray(j?.longitude) ? j.longitude : (j?.longitude != null ? [j.longitude] : []);
     const timeArr = Array.isArray(j?.hourly?.time) ? j.hourly.time : [];
@@ -82,7 +98,7 @@ exports.handler = async (event) => {
       return geo({ features: [], warning: "No hourly PM2.5 data returned for this bbox." });
     }
 
-    const is2D = Array.isArray(series[0]); // [ [loc0_t0, loc0_t1,...], [loc1_t0,...], ... ]
+    const is2D = Array.isArray(series[0]); // [[loc0_t0, loc0_t1,...], [loc1_t0,...], ...]
     const time0 = timeArr?.[0] ?? null;
 
     const n = Math.min(latArr.length, lonArr.length, is2D ? series.length : series.length);
@@ -91,12 +107,11 @@ exports.handler = async (event) => {
       const lon = safeNum(lonArr[i]);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
 
-      // If 2D, take first timestep; if 1D, take i-th (best effort); otherwise null
       let pm = null;
       if (is2D) {
-        pm = safeNum(series[i]?.[0], null);
+        pm = safeNum(series[i]?.[0], null); // first timestep
       } else {
-        // Some responses may return a single common series. If lengths match, map per-location.
+        // If 1D, try per-location value when lengths align; otherwise take first value as a fallback.
         pm = (series.length === n) ? safeNum(series[i], null) : safeNum(series[0], null);
       }
 
