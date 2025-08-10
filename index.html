@@ -51,7 +51,7 @@
     /* Legend */
     .esri-legend{background:rgba(255,255,255,.92)!important;border-radius:10px!important;box-shadow:0 8px 18px rgba(0,0,0,.25)!important}
 
-    /* Basemap options (hover restored) */
+    /* Basemap options (hover + active) */
     .basemap-option{
       background:rgba(255,255,255,.12);
       padding:10px 12px;margin:8px 0;border-radius:8px;
@@ -194,7 +194,7 @@
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
       });
 
-      // allow same-origin explicitly (not required, but safe)
+      // allow same-origin explicitly
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
 
       const toast = (msg, ms=2200) => {
@@ -354,9 +354,15 @@
         const viewDiv = document.getElementById("viewDiv");
         const isOpen = panel.classList.toggle("open");
         viewDiv.classList.toggle(cls, isOpen);
-        if(id==="sidebar"){ document.getElementById("settingsPanel").classList.remove("open"); viewDiv.classList.remove("settings-open");}
-        else { document.getElementById("sidebar").classList.remove("open"); viewDiv.classList.remove("sidebar-open");}
-        setTimeout(()=>view.resize(),250);
+        if(id==="sidebar"){
+          document.getElementById("settingsPanel").classList.remove("open");
+          viewDiv.classList.remove("settings-open");
+        } else {
+          document.getElementById("sidebar").classList.remove("open");
+          viewDiv.classList.remove("sidebar-open");
+        }
+        // replaced view.resize() with a safe resize event
+        setTimeout(()=>window.dispatchEvent(new Event("resize")),250);
       }
       document.getElementById("hamburgerBtn").addEventListener("click", ()=>togglePanel("sidebar","sidebar-open"));
       document.getElementById("settingsBtn").addEventListener("click", ()=>togglePanel("settingsPanel","settings-open"));
@@ -401,7 +407,8 @@
           document.getElementById("sidebar").classList.remove("open");
           document.getElementById("settingsPanel").classList.remove("open");
           document.getElementById("viewDiv").classList.remove("sidebar-open","settings-open");
-          view.resize();
+          // replaced view.resize() with safe resize event
+          window.dispatchEvent(new Event("resize"));
         }
       });
 
