@@ -98,9 +98,8 @@
     <h3>📈 Notes</h3>
     <div style="opacity:.9;font-size:13px">
       • Live stations: OpenAQ via Esri Living Atlas<br>
-      • Modeled overlay: Open-Meteo (CAMS model)<br>
-      • <b>📁 Custom GeoJSON: Your live AQI data</b><br>
-      • <b>Observed overlay: IQAir (AQI, major Chinese cities)</b>
+      • World cities: Major cities worldwide<br>
+      • <b>📁 Custom GeoJSON: Your live AQI data from IQAir</b>
     </div>
 
     <h3>ℹ️ Status</h3>
@@ -128,16 +127,8 @@
       <label><input type="checkbox" id="layerCities" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>Modeled PM2.5 (Open-Meteo)</span>
-      <label><input type="checkbox" id="layerOM"> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span><b>📁 Custom GeoJSON Layer</b></span>
       <label><input type="checkbox" id="layerGeoJSON" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span><b>Observed AQI (IQAir – CN majors)</b></span>
-      <label><input type="checkbox" id="layerIQ" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>Legend</span>
@@ -187,10 +178,8 @@
     require([
       "esri/Map","esri/views/MapView",
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
-      "esri/layers/GraphicsLayer","esri/Graphic",
-      "esri/widgets/Legend","esri/geometry/support/webMercatorUtils",
-      "esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, GraphicsLayer, Graphic, Legend, webMercatorUtils, esriConfig) {
+      "esri/widgets/Legend","esri/config"
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, Legend, esriConfig) {
 
       let customGeoJSONLayer = null;
       let currentGeoJSONData = null;
@@ -332,9 +321,8 @@
           // Update legend
           if (legendWidget) {
             legendWidget.layerInfos = [
-              { layer: pm25Layer, title: "PM2.5 (μg/m³) — Stations" },
-              { layer: openMeteoLayer, title: "PM2.5 (μg/m³) — Modeled" },
-              { layer: customGeoJSONLayer, title: "AQI — Custom Data (GeoJSON)" }
+              { layer: pm25Layer, title: "PM2.5 (μg/m³) — Live Stations" },
+              { layer: customGeoJSONLayer, title: "AQI — Custom Data (China)" }
             ];
           }
 
@@ -465,10 +453,10 @@
         reader.readAsText(file);
       }
 
-      /* OpenAQ */
+      /* PM2.5 Stations (OpenAQ) */
       const pm25Layer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
-        title:"PM2.5 (OpenAQ, latest hour)", outFields:["*"],
+        title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
         popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5">
           <b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br>
           <b>Updated:</b> {lastUpdated}<br><a href="{url}" target="_blank" rel="noopener">Station link</a></div>` },
@@ -483,7 +471,7 @@
       });
       map.add(pm25Layer);
 
-      /* World cities */
+      /* World Cities */
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
@@ -494,95 +482,22 @@
       });
       map.add(citiesLayer);
 
-      /* Open-Meteo (off by default) */
-      function sm(hex,size){ return { type:"simple-marker", color:hex, size, outline:{ color:"white", width:0.5 } }; }
-      const openMeteoLayer = new GeoJSONLayer({
-        url:"/.netlify/functions/openmeteo-grid?lat1=20&lon1=95&lat2=42&lon2=125&step=1",
-        title:"Modeled PM2.5 (Open-Meteo / CAMS)", copyright:"© Open-Meteo, CAMS/ECMWF",
-        visible:false,
-        renderer:{ type:"class-breaks", field:"pm25", classBreakInfos:[
-          {minValue:0,maxValue:10,symbol:sm("#00e400",8),label:"Good (0–10 μg/m³)"},
-          {minValue:10,maxValue:25,symbol:sm("#ffff00",10),label:"Moderate (10–25)"},
-          {minValue:25,maxValue:50,symbol:sm("#ff7e00",12),label:"USG (25–50)"},
-          {minValue:50,maxValue:75,symbol:sm("#ff0000",14),label:"Unhealthy (50–75)"},
-          {minValue:75,maxValue:100,symbol:sm("#8f3f97",16),label:"Very Unhealthy (75–100)"},
-          {minValue:100,maxValue:9999,symbol:sm("#7e0023",18),label:"Hazardous (100+)"}
-        ]},
-        popupTemplate:{ title:"Modeled PM2.5", content:(f)=>{ const p=f.graphic.attributes||{}; const v=p.pm25!=null?`${Math.round(p.pm25)} μg/m³`:"n/a"; const t=p.time?new Date(p.time).toLocaleString():"n/a"; return `PM2.5: <b>${v}</b><br>Time: ${t}<br>Source: Open-Meteo (CAMS)`; } }
-      });
-      map.add(openMeteoLayer);
-
-      /* IQAir via GraphicsLayer – CN major cities */
-      const iqairGL = new GraphicsLayer({ title:"Observed AQI (IQAir – CN majors)" });
-      map.add(iqairGL);
-
-      function aqiSymbol(aqi){
-        const mk=(color,size)=>({ type:"simple-marker", color, size, outline:{ color:"white", width:0.5 } });
-        if (aqi <= 50) return mk("#00e400",8);
-        if (aqi <= 100) return mk("#ffff00",10);
-        if (aqi <= 150) return mk("#ff7e00",12);
-        if (aqi <= 200) return mk("#ff0000",14);
-        if (aqi <= 300) return mk("#8f3f97",16);
-        return mk("#7e0023",18);
-      }
-
-      async function loadIQAirCities(){
-        try{
-          toast("Loading IQAir (CN major cities)…", 1800);
-          const r = await fetch("/.netlify/functions/iqair-cities?preset=cn_major", { cache:"no-store" });
-          const j = await r.json();
-          iqairGL.removeAll();
-
-          const feats = Array.isArray(j.features) ? j.features : [];
-          feats.forEach(f=>{
-            const c = f.geometry?.coordinates || [];
-            const p = f.properties || {};
-            if (!Number.isFinite(c[0]) || !Number.isFinite(c[1])) return;
-            const aqi = Number.isFinite(p.aqi) ? p.aqi : NaN;
-
-            const g = new Graphic({
-              geometry:{ type:"point", longitude:c[0], latitude:c[1] },
-              symbol: Number.isFinite(aqi) ? aqiSymbol(aqi) : aqiSymbol(501),
-              attributes:p,
-              popupTemplate:{
-                title: [p.city || p.name, p.country].filter(Boolean).join(", "),
-                content:`AQI (${p.aqi_scale || "US"}): <b>${Number.isFinite(aqi)?aqi:"n/a"}</b><br>
-                         Main pollutant: ${p.main || "n/a"}<br>
-                         Time: ${p.time ? new Date(p.time).toLocaleString() : "n/a"}<br>
-                         Source: IQAir Nearest City`
-              }
-            });
-            iqairGL.add(g);
-          });
-
-          toast(`IQAir loaded: ${feats.length} cities`);
-        }catch(e){
-          console.error("IQAir CN majors load error:", e);
-          toast("IQAir load failed");
-        }
-      }
-
       /* Legend */
       let legendWidget=null;
       view.whenLayerView(pm25Layer).then(()=>{
         legendWidget = new Legend({ view, layerInfos:[
-          { layer: pm25Layer, title:"PM2.5 (μg/m³) — Stations" },
-          { layer: openMeteoLayer, title:"PM2.5 (μg/m³) — Modeled" }
+          { layer: pm25Layer, title:"PM2.5 (μg/m³) — Live Stations" }
         ]});
         view.ui.add(legendWidget, "bottom-left");
         document.getElementById("loading").style.display="none";
         updateStatus();
         refreshTopCities();
         setInterval(refreshTopCities, 30*60*1000);
-
-        // First load of IQAir city points + periodic refresh every 20 min
-        loadIQAirCities();
-        setInterval(()=>{ if(iqairGL.visible) loadIQAirCities(); }, 20*60*1000);
       });
 
       function updateStatus(){
         pm25Layer.queryFeatureCount().then(c=>{
-          let statusText = `✓ Stations connected (${c.toLocaleString()} points). IQAir city overlay on.`;
+          let statusText = `✓ PM2.5 stations connected (${c.toLocaleString()} points).`;
           if (customGeoJSONLayer && customGeoJSONLayer.loaded) {
             const featureCount = currentGeoJSONData ? currentGeoJSONData.features.length : 0;
             statusText += ` 📁 Custom GeoJSON active (${featureCount} cities).`;
@@ -622,7 +537,6 @@
 
       async function zoomToCity(city,country){
         const esc=s=>String(s).replace(/'/g,"''");
-        const q=pm25Layer.createQuery();
         q.where=`city='${esc(city)}' AND country_name='${esc(country)}' AND value BETWEEN 0 AND 500`;
         q.outFields=["*"]; q.returnGeometry=true; q.num=1;
         const res=await pm25Layer.queryFeatures(q);
@@ -657,8 +571,6 @@
       document.getElementById("layerAQI").addEventListener("change", e=> pm25Layer.visible = e.target.checked);
       document.getElementById("layerCities").addEventListener("change", e=> citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
-      document.getElementById("layerOM").addEventListener("change", e=> { openMeteoLayer.visible = e.target.checked; if(e.target.checked) toast("Updating Open-Meteo…"); });
-      document.getElementById("layerIQ").addEventListener("change", e=> { iqairGL.visible = e.target.checked; if(e.target.checked) loadIQAirCities(); });
       document.getElementById("layerGeoJSON").addEventListener("change", e=> { if(customGeoJSONLayer) customGeoJSONLayer.visible = e.target.checked; });
 
       /* Quick search */
