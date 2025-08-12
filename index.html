@@ -54,107 +54,22 @@
     #q{flex:1;padding:10px;border:0;background:#121212;color:#fff}
     #send{padding:10px 12px;border:0;background:#0079c1;color:#fff;font-weight:700;cursor:pointer}
   
-/* Mascot chat toggle */
-#chat { display: none; }
-#chat.open { display: flex; }
 
-/* === Draggable mascot + attached conversation bubble === */
+/* === AQI Warrior mascot: transparent, no border/glow === */
+#aqiFloat{ position:fixed; z-index:2147483600; left: calc(100% - 100px); top: calc(100% - 120px); width:max-content; }
+#mascotToggle{ background:transparent !important; border:0 !important; padding:0 !important; border-radius:0 !important; box-shadow:none !important; cursor:pointer; }
+#mascotToggle::before, #mascotToggle::after{ content:none !important; display:none !important; }
+#mascotToggle img{ width:84px !important; height:84px !important; display:block; filter: drop-shadow(0 3px 8px rgba(0,0,0,.35)); }
+
+/* Bubble styling */
 .aqi-float{ user-select:none; touch-action:none; }
-#mascotToggle:focus{ outline-offset:4px; }
-.chat-bubble{
-  position:absolute;
-  display:none;
-  max-width:min(420px, 86vw);
-  max-height:min(70vh, 640px);
-  border-radius:16px;
-  background:#181b22ee;
-  border:1px solid #2a2f3a;
-  box-shadow:0 14px 40px rgba(0,0,0,.45);
-  overflow:hidden;
-  transform: translate(0, -12px);
-}
-.chat-bubble.open{ display:block; }
-.chat-bubble.right{ left: -8px; transform: translate(-100%, -12px); } /* bubble opens to the left of mascot */
-.chat-bubble.left{ left: 84px; } /* bubble opens to the right of mascot */
-.chat-bubble::after{
-  content:"";
-  position:absolute; top:36px; width:0; height:0; border:10px solid transparent;
-}
-.chat-bubble.left::after{
-  left:-1px; transform:translateX(-100%);
-  border-right-color:#181b22ee; border-left-color:transparent;
-}
-.chat-bubble.right::after{
-  right:-1px; transform:translateX(100%);
-  border-left-color:#181b22ee; border-right-color:transparent;
-}
-/* Fit the existing #chat inside the bubble */
-.bubble-chat{ width:min(420px, 86vw); height:min(70vh, 640px); display:flex !important; flex-direction:column; }
-
-
-/* === High-contrast mascot + bubble visibility on maps === */
-#aqiFloat { z-index: 2147483600 !important; }
-#mascotToggle{
-  position: relative;
-  width: 86px; height: 86px;
-  padding: 10px !important;
-  border-radius: 20px !important;
-  background: rgba(10,12,16,.55) !important;
-  border: 1px solid rgba(255,255,255,.22) !important;
-  box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.06) !important;
-  backdrop-filter: blur(8px) saturate(1.1);
-}
-#mascotToggle::before{
-  content:""; position:absolute; inset:8px;
-  border-radius: 16px;
-  background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.96), rgba(255,255,255,.92) 60%, rgba(255,255,255,.88));
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.25);
-  z-index: 0;
-}
-#mascotToggle img{
-  position:relative; z-index:1;
-  width: 66px !important; height: 66px !important;
-  filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)) drop-shadow(0 8px 12px rgba(0,0,0,.25)) brightness(1.12) saturate(1.05);
-}
-
-/* Bubble: brighter border + stronger shadow for visibility */
-.chat-bubble{
-  background: rgba(17,20,28,.94) !important;
-  border: 1px solid rgba(255,255,255,.35) !important;
-  box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.25) !important;
-}
-.chat-bubble.left::after{ border-right-color: rgba(17,20,28,.94) !important; }
-.chat-bubble.right::after{ border-left-color: rgba(17,20,28,.94) !important; }
-
-/* Make sure inner chat uses readable text defaults */
-.chat-bubble, .chat-bubble *{
-  color: #e9edf5;
-}
-
-
-@keyframes ringPulse { 0%{ box-shadow: 0 0 0 0 rgba(106,27,154,.35); } 100%{ box-shadow: 0 0 0 12px rgba(106,27,154,0); } }
-#mascotToggle:after{
-  content:""; position:absolute; inset:-4px; border-radius:24px;
-  animation: ringPulse 2.2s ease-out infinite;
-}
-
-
-/* Draggable wrapper + bubble arrow */
-.aqi-float{ user-select:none; touch-action:none; }
-.chat-bubble{
-  position:absolute; display:none;
-  max-width:min(420px, 86vw); max-height:min(70vh, 640px);
-  border-radius:16px; background:#11141cee; border:1px solid rgba(255,255,255,.35);
-  box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.25);
-  overflow:hidden; transform: translate(0, -12px);
-}
+.chat-bubble{ position:absolute; display:none; max-width:min(420px, 86vw); max-height:min(70vh, 640px);
+  border-radius:16px; background:#11141cee; border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 18px 50px rgba(0,0,0,.6); overflow:hidden; transform: translate(0, -10px); }
 .chat-bubble.open{ display:block; }
 .chat-bubble::after{ content:""; position:absolute; top:36px; width:0; height:0; border:10px solid transparent; }
-.chat-bubble.left{ left: 84px; }
-.chat-bubble.left::after{ left:-1px; transform:translateX(-100%); border-right-color:#11141cee; }
-.chat-bubble.right{ left: -8px; transform: translate(-100%, -12px); }
-.chat-bubble.right::after{ right:-1px; transform:translateX(100%); border-left-color:#11141cee; }
-/* Fit existing #chat inside */
+.chat-bubble.left{ left: 92px; } .chat-bubble.left::after{ left:-1px; transform:translateX(-100%); border-right-color:#11141cee; }
+.chat-bubble.right{ left: -12px; transform: translate(-100%, -10px); } .chat-bubble.right::after{ right:-1px; transform:translateX(100%); border-left-color:#11141cee; }
 .bubble-chat{ width:min(420px, 86vw); height:min(70vh, 640px); display:flex !important; flex-direction:column; }
 </style>
 </head>
@@ -220,6 +135,7 @@
 <div id="loading">Loading map…</div>
 <div id="overlayStatus"></div>
 </div>
+
 <script>
     require([
       "esri/Map","esri/views/MapView",
@@ -590,25 +506,7 @@
       })();
     });
   </script>
-<!-- Floating mascot toggle -->
-<script>
-(function(){
-  const btn  = document.getElementById('mascotToggle');
-  const chat = document.getElementById('chat');
-  const minBtn = document.getElementById('minBtn');
-  function setOpen(open){
-    chat.classList.toggle('open', open);
-    btn.setAttribute('aria-expanded', String(open));
-  }
-  btn.addEventListener('click', ()=> setOpen(!chat.classList.contains('open')));
-  if(minBtn){
-    minBtn.addEventListener('click', ()=> setOpen(false));
-  }
-})();
-</script>
-<div class="aqi-float" id="aqiFloat" style="position:fixed; left: calc(100% - 100px); top: calc(100% - 120px); z-index: 2147483000; width:max-content;"><button aria-controls="chat" aria-expanded="false" id="mascotToggle" style="border:0;background:#202430;padding:8px;border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.35);cursor:pointer" title="Open AQI Assistant">
-<img alt="AQI Assistant mascot" src="./mascot.png" style="width:72px;height:72px;display:block;object-fit:contain"/>
-</button>
+<div class="aqi-float" id="aqiFloat"><button id="mascotToggle" title="Open AQI Assistant"><img alt="AQI Warrior mascot" src="./mascot.png"/></button>
 <section aria-label="AQI Assistant" aria-modal="false" class="chat-bubble" id="chatBubble" role="dialog">
 <div class="bubble-body" id="bubbleMount"><section aria-live="polite" class="bubble-chat" id="chat">
 <div id="chatHead">
@@ -620,28 +518,22 @@
 <div class="bubble bot">Hi! Ask me about air quality. Try: "What's the PM2.5 in Hanoi?" or "Which are the top 5 most polluted cities right now?"</div>
 </div>
 <div id="composer">
-<input id="q" placeholder="Ask about PM2.5 / AQI…"/>
+<input id="q" placeholder="Ask about PM2.5 / AQI…">
 <button id="send">Send</button>
-</div>
+</input></div>
 </div>
 </section></div>
 </section>
-</div>
-
-<script>
+</div><script>
 (function(){
   const wrapper = document.getElementById('aqiFloat');
   const btn = document.getElementById('mascotToggle');
   const bubble = document.getElementById('chatBubble');
-  const chat = document.getElementById('chat');
-  const minBtn = document.getElementById('minBtn');
   const LS_POS = 'aqi-float-pos';
   const LS_OPEN = 'aqi-chat-open';
-
-  if(!btn || !wrapper || !bubble){ return; }
+  if(!wrapper || !btn || !bubble) return;
 
   function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
-
   function setOpen(open){
     bubble.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', String(open));
@@ -649,82 +541,55 @@
     updateSide();
   }
   function isOpen(){ return bubble.classList.contains('open'); }
-
-  // Decide whether bubble opens to left or right based on viewport
   function updateSide(){
     const rect = wrapper.getBoundingClientRect();
     const vw = window.innerWidth;
-    const openLeft = rect.right > vw - 240; // if near right edge, open left
+    const openLeft = rect.right > vw - 260;
     bubble.classList.toggle('right', openLeft);
     bubble.classList.toggle('left', !openLeft);
   }
 
-  // Restore last pos
+  // Restore position/open
   try{
-    const saved = JSON.parse(localStorage.getItem(LS_POS)||'null');
-    if(saved && typeof saved.x==='number' && typeof saved.y==='number'){
-      wrapper.style.left = saved.x + 'px';
-      wrapper.style.top  = saved.y + 'px';
-    }
+    const p = JSON.parse(localStorage.getItem(LS_POS)||'null');
+    if(p){ wrapper.style.left = p.x+'px'; wrapper.style.top = p.y+'px'; }
   }catch(_){}
-  // Restore open state
-  try{ if(localStorage.getItem(LS_OPEN)==='1'){ setOpen(true); } }catch(_){}
+  try{
+    if(localStorage.getItem(LS_OPEN)==='1'){ setOpen(true); }
+  }catch(_){}
 
-  // --- Tap vs drag handling ---
+  // Tap vs drag
   let dragging=false, startX=0, startY=0, origX=0, origY=0, startTime=0;
-  const TAP_MAX_DIST = 6;   // px
-  const TAP_MAX_TIME = 250; // ms
-
-  function onPointerDown(e){
-    // left click or touch only
-    if(e.pointerType === 'mouse' && e.button !== 0) return;
-    dragging = true;
-    startTime = Date.now();
-    const rect = wrapper.getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    origX = rect.left;  origY = rect.top;
+  const TAP_MAX_DIST=6, TAP_MAX_TIME=280;
+  btn.addEventListener('pointerdown', e=>{
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    dragging=true; startTime=Date.now();
+    const r=wrapper.getBoundingClientRect(); startX=e.clientX; startY=e.clientY; origX=r.left; origY=r.top;
     btn.setPointerCapture && btn.setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e){
+  });
+  btn.addEventListener('pointermove', e=>{
     if(!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return; // ignore micro jitter
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const newX = clamp(origX + dx, 8, vw - 96);
-    const newY = clamp(origY + dy, 8, vh - 96);
-    wrapper.style.left = newX + 'px';
-    wrapper.style.top  = newY + 'px';
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    const vw=innerWidth, vh=innerHeight;
+    wrapper.style.left = clamp(origX+dx, 8, vw-100)+'px';
+    wrapper.style.top  = clamp(origY+dy, 8, vh-100)+'px';
     updateSide();
-  }
-  function onPointerUp(e){
+  });
+  const end = e=>{
     if(!dragging) return;
-    dragging = false;
+    dragging=false;
     btn.releasePointerCapture && btn.releasePointerCapture(e.pointerId);
-    // Determine tap vs drag
-    const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
-    const time = Date.now() - startTime;
-    if(dist <= TAP_MAX_DIST && time <= TAP_MAX_TIME){
-      setOpen(!isOpen()); // treat as click
-    }else{
-      // persist new pos
-      const rect = wrapper.getBoundingClientRect();
-      try{ localStorage.setItem(LS_POS, JSON.stringify({x: Math.round(rect.left), y: Math.round(rect.top)})); }catch(_){}
+    const dist=Math.hypot(e.clientX-startX, e.clientY-startY), time=Date.now()-startTime;
+    if(dist<=TAP_MAX_DIST && time<=TAP_MAX_TIME){ setOpen(!isOpen()); }
+    else{
+      const r=wrapper.getBoundingClientRect();
+      try{ localStorage.setItem(LS_POS, JSON.stringify({x:Math.round(r.left), y:Math.round(r.top)})); }catch(_){}
     }
-  }
-  btn.addEventListener('pointerdown', onPointerDown);
-  btn.addEventListener('pointermove', onPointerMove);
-  btn.addEventListener('pointerup', onPointerUp);
-  btn.addEventListener('pointercancel', onPointerUp);
-
-  // Minimize button inside chat closes the bubble
-  if(minBtn){ minBtn.addEventListener('click', ()=> setOpen(false)); }
-
-  window.addEventListener('resize', updateSide);
+  };
+  btn.addEventListener('pointerup', end);
+  btn.addEventListener('pointercancel', end);
+  addEventListener('resize', updateSide);
   updateSide();
-
-  // Ensure the inner chat is visible when bubble is open
-  if(chat){ chat.style.display = 'flex'; }
 })();
 </script></body>
 </html>
