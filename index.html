@@ -311,6 +311,10 @@
 <label><input checked="" id="layerWind" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+  <span>Animated Winds (Flow)</span>
+  <label><input id="layerWindAnimated" type="checkbox" checked> Visible</label>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
 <span>Active Fire Hotspots</span>
 <label><input checked="" id="layerFire" type="checkbox"/> Visible</label>
 </div>
@@ -468,7 +472,7 @@
       }
 
       const pm25Layer = new FeatureLayer({
-        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0",
         title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
         popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5">
           <b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br>
@@ -485,7 +489,7 @@
       map.add(pm25Layer);
 
       const citiesLayer = new FeatureLayer({
-        url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
         renderer:{ type:"simple", symbol:{ type:"simple-marker", size:3, color:[255,255,255,0.4], outline:{ width:.5, color:[0,0,0,.2] } } },
         labelingInfo:[{ symbol:{ type:"text", color:"white", haloColor:"black", haloSize:.5, font:{ family:"Arial", size:8 } },
@@ -496,7 +500,7 @@
 
       // Add Wind Layer from Living Atlas - Correct working URL
       windLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0",
         title: "Current Weather and Wind Stations",
         opacity: 0.8,
         visible: true,
@@ -539,11 +543,42 @@
           </div>`
         }
       });
+// Add Animated Winds (FlowRenderer) using ImageryLayer
+const animatedWindLayer = new ImageryLayer({
+  url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
+  title: "Animated Winds (Sample)",
+  visible: true,
+  renderer: {
+    type: "flow",
+    trailWidth: "2px",
+    density: 1.2,
+    visualVariables: [{
+      type: "color",
+      field: "Magnitude",
+      stops: [
+        { value: 0, color: [40, 146, 199, 1] },
+        { value: 5, color: [160, 194, 155, 1] },
+        { value: 10, color: [218, 230, 119, 1] }
+      ]
+    }]
+  },
+  effect: "bloom(1.2, 0.5px, 0)"
+});
+map.add(animatedWindLayer, 1);
+
+// Toggle for animated winds
+const chkAnimated = document.getElementById("layerWindAnimated");
+if (chkAnimated) {
+  chkAnimated.addEventListener("change", (e) => {
+    animatedWindLayer.visible = e.target.checked;
+  });
+}
+
       map.add(windLayer, 2);
 
       // Add Fire Layer from NASA FIRMS - Direct WMS service
       fireLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0",
         title: "Active Fires & Thermal Hotspots (VIIRS)",
         opacity: 0.9,
         visible: true,
