@@ -494,9 +494,9 @@
       });
       map.add(citiesLayer);
 
-      // Add Wind Layer from Living Atlas - Updated working URL
+      // Add Wind Layer from Living Atlas - Correct working URL
       windLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction/FeatureServer/0",
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
         title: "Current Weather and Wind Stations",
         opacity: 0.8,
         visible: true,
@@ -505,11 +505,11 @@
           symbol: {
             type: "simple-marker",
             style: "triangle",
-            size: 8,
+            size: 10,
             color: [0, 150, 255, 0.8],
             outline: {
               color: "white",
-              width: 1
+              width: 1.5
             }
           },
           visualVariables: [{
@@ -521,17 +521,19 @@
             field: "WIND_SPEED",
             minDataValue: 0,
             maxDataValue: 50,
-            minSize: 6,
-            maxSize: 20
+            minSize: 8,
+            maxSize: 24
           }]
         },
         popupTemplate: {
-          title: "Weather Station: {STATION_NAME}",
+          title: "🌡️ Weather Station: {STATION_NAME}",
           content: `<div style="line-height:1.5">
-            <b>🌬️ Wind Speed:</b> {WIND_SPEED} mph<br>
+            <b>🌬️ Wind Speed:</b> {WIND_SPEED} km/h<br>
             <b>🧭 Wind Direction:</b> {WIND_DIRECT}°<br>
-            <b>🌡️ Temperature:</b> {TEMP} °F<br>
-            <b>💧 Humidity:</b> {R_HUMIDITY}%<br>
+            <b>🌡️ Air Temperature:</b> {TEMP} °C<br>
+            <b>💧 Relative Humidity:</b> {R_HUMIDITY}%<br>
+            <b>☁️ Cloud Coverage:</b> {COVERAGE}<br>
+            <b>🌈 Visibility:</b> {VISIBILITY} km<br>
             <b>📍 Location:</b> {STATION_NAME}<br>
             <b>🕒 Observation Time:</b> {DATE_TIME}
           </div>`
