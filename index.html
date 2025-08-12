@@ -137,6 +137,25 @@
   content:""; position:absolute; inset:-4px; border-radius:24px;
   animation: ringPulse 2.2s ease-out infinite;
 }
+
+
+/* Draggable wrapper + bubble arrow */
+.aqi-float{ user-select:none; touch-action:none; }
+.chat-bubble{
+  position:absolute; display:none;
+  max-width:min(420px, 86vw); max-height:min(70vh, 640px);
+  border-radius:16px; background:#11141cee; border:1px solid rgba(255,255,255,.35);
+  box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.25);
+  overflow:hidden; transform: translate(0, -12px);
+}
+.chat-bubble.open{ display:block; }
+.chat-bubble::after{ content:""; position:absolute; top:36px; width:0; height:0; border:10px solid transparent; }
+.chat-bubble.left{ left: 84px; }
+.chat-bubble.left::after{ left:-1px; transform:translateX(-100%); border-right-color:#11141cee; }
+.chat-bubble.right{ left: -8px; transform: translate(-100%, -12px); }
+.chat-bubble.right::after{ right:-1px; transform:translateX(100%); border-left-color:#11141cee; }
+/* Fit existing #chat inside */
+.bubble-chat{ width:min(420px, 86vw); height:min(70vh, 640px); display:flex !important; flex-direction:column; }
 </style>
 </head>
 <body>
@@ -608,6 +627,7 @@
 </section></div>
 </section>
 </div>
+
 <script>
 (function(){
   const wrapper = document.getElementById('aqiFloat');
@@ -618,13 +638,14 @@
   const LS_POS = 'aqi-float-pos';
   const LS_OPEN = 'aqi-chat-open';
 
+  if(!btn || !wrapper || !bubble){ return; }
+
   function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
 
   function setOpen(open){
-    if(!bubble) return;
     bubble.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', String(open));
-    localStorage.setItem(LS_OPEN, open?'1':'0');
+    try{ localStorage.setItem(LS_OPEN, open ? '1' : '0'); }catch(_){}
     updateSide();
   }
   function isOpen(){ return bubble.classList.contains('open'); }
@@ -633,7 +654,7 @@
   function updateSide(){
     const rect = wrapper.getBoundingClientRect();
     const vw = window.innerWidth;
-    const openLeft = rect.right > vw - 240; // if near right edge, open to left
+    const openLeft = rect.right > vw - 240; // if near right edge, open left
     bubble.classList.toggle('right', openLeft);
     bubble.classList.toggle('left', !openLeft);
   }
@@ -647,32 +668,31 @@
     }
   }catch(_){}
   // Restore open state
-  if(localStorage.getItem(LS_OPEN)==='1'){ setOpen(true); }
+  try{ if(localStorage.getItem(LS_OPEN)==='1'){ setOpen(true); } }catch(_){}
 
-  // Toggle open on click
-  btn.addEventListener('click', ()=> setOpen(!isOpen()));
-  if(minBtn){ minBtn.addEventListener('click', ()=> setOpen(false)); }
+  // --- Tap vs drag handling ---
+  let dragging=false, startX=0, startY=0, origX=0, origY=0, startTime=0;
+  const TAP_MAX_DIST = 6;   // px
+  const TAP_MAX_TIME = 250; // ms
 
-  // Drag logic (pointer events)
-  let startX=0, startY=0, origX=0, origY=0, dragging=false;
   function onPointerDown(e){
+    // left click or touch only
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
     dragging = true;
-    btn.setPointerCapture(e.pointerId);
+    startTime = Date.now();
     const rect = wrapper.getBoundingClientRect();
-    startX = e.clientX;
-    startY = e.clientY;
-    origX = rect.left;
-    origY = rect.top;
-    e.preventDefault();
+    startX = e.clientX; startY = e.clientY;
+    origX = rect.left;  origY = rect.top;
+    btn.setPointerCapture && btn.setPointerCapture(e.pointerId);
   }
   function onPointerMove(e){
     if(!dragging) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const newX = clamp(origX + dx, 8, vw - 88); // clamp within edges (mascot ~80px wide)
-    const newY = clamp(origY + dy, 8, vh - 88);
+    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return; // ignore micro jitter
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const newX = clamp(origX + dx, 8, vw - 96);
+    const newY = clamp(origY + dy, 8, vh - 96);
     wrapper.style.left = newX + 'px';
     wrapper.style.top  = newY + 'px';
     updateSide();
@@ -680,23 +700,31 @@
   function onPointerUp(e){
     if(!dragging) return;
     dragging = false;
-    btn.releasePointerCapture(e.pointerId);
-    // persist
-    const rect = wrapper.getBoundingClientRect();
-    localStorage.setItem(LS_POS, JSON.stringify({x: Math.round(rect.left), y: Math.round(rect.top)}));
+    btn.releasePointerCapture && btn.releasePointerCapture(e.pointerId);
+    // Determine tap vs drag
+    const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+    const time = Date.now() - startTime;
+    if(dist <= TAP_MAX_DIST && time <= TAP_MAX_TIME){
+      setOpen(!isOpen()); // treat as click
+    }else{
+      // persist new pos
+      const rect = wrapper.getBoundingClientRect();
+      try{ localStorage.setItem(LS_POS, JSON.stringify({x: Math.round(rect.left), y: Math.round(rect.top)})); }catch(_){}
+    }
   }
   btn.addEventListener('pointerdown', onPointerDown);
   btn.addEventListener('pointermove', onPointerMove);
   btn.addEventListener('pointerup', onPointerUp);
   btn.addEventListener('pointercancel', onPointerUp);
-  window.addEventListener('resize', updateSide);
 
-  // Initial side set
+  // Minimize button inside chat closes the bubble
+  if(minBtn){ minBtn.addEventListener('click', ()=> setOpen(false)); }
+
+  window.addEventListener('resize', updateSide);
   updateSide();
 
-  // If #chat existed elsewhere, ensure it's visible when open
+  // Ensure the inner chat is visible when bubble is open
   if(chat){ chat.style.display = 'flex'; }
 })();
-</script>
-</body>
+</script></body>
 </html>
