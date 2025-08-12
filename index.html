@@ -281,8 +281,8 @@
       • Live stations: OpenAQ via Esri Living Atlas<br/>
       • World cities: Major cities worldwide<br/>
       • Regional AQI: Google Air Quality API<br/>
-      • Wind data: NOAA Real-time Global Wind<br/>
-      • Fire data: NASA FIRMS (24hr active fires)
+      • Wind data: NOAA METAR weather stations<br/>
+      • Fire data: NASA VIIRS thermal hotspots (24hr)
     </div>
 <h3>ℹ️ Status</h3>
 <div id="status" style="opacity:.9;font-size:13px"></div>
@@ -307,11 +307,11 @@
 <label><input checked="" id="layerGoogleAQI" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-<span>Real-time Wind</span>
+<span>Weather & Wind Stations</span>
 <label><input checked="" id="layerWind" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-<span>Active Fires</span>
+<span>Active Fire Hotspots</span>
 <label><input checked="" id="layerFire" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
@@ -494,30 +494,83 @@
       });
       map.add(citiesLayer);
 
-      // Add Wind Layer from Living Atlas
-      windLayer = new ImageryLayer({
-        url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/NOAA_Real_Time_Wind_Global/ImageServer",
-        title: "Real-time Wind (Global)",
+      // Add Wind Layer from Living Atlas - Updated working URL
+      windLayer = new FeatureLayer({
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction/FeatureServer/0",
+        title: "Current Weather and Wind Stations",
         opacity: 0.8,
-        visible: true
+        visible: true,
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            style: "triangle",
+            size: 8,
+            color: [0, 150, 255, 0.8],
+            outline: {
+              color: "white",
+              width: 1
+            }
+          },
+          visualVariables: [{
+            type: "rotation",
+            field: "WIND_DIRECT",
+            rotationType: "geographic"
+          }, {
+            type: "size",
+            field: "WIND_SPEED",
+            minDataValue: 0,
+            maxDataValue: 50,
+            minSize: 6,
+            maxSize: 20
+          }]
+        },
+        popupTemplate: {
+          title: "Weather Station: {STATION_NAME}",
+          content: `<div style="line-height:1.5">
+            <b>🌬️ Wind Speed:</b> {WIND_SPEED} mph<br>
+            <b>🧭 Wind Direction:</b> {WIND_DIRECT}°<br>
+            <b>🌡️ Temperature:</b> {TEMP} °F<br>
+            <b>💧 Humidity:</b> {R_HUMIDITY}%<br>
+            <b>📍 Location:</b> {STATION_NAME}<br>
+            <b>🕒 Observation Time:</b> {DATE_TIME}
+          </div>`
+        }
       });
       map.add(windLayer, 2);
 
-      // Add Fire and Smoke Layer from Living Atlas
-      fireLayer = new MapImageLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/FIRMS_Global/MapServer",
-        title: "Active Fires & Thermal Anomalies",
+      // Add Fire Layer from NASA FIRMS - Direct WMS service
+      fireLayer = new FeatureLayer({
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
+        title: "Active Fires & Thermal Hotspots (VIIRS)",
         opacity: 0.9,
         visible: true,
-        sublayers: [{
-          id: 0,
-          visible: true,
-          title: "MODIS Active Fire 24hr"
-        }, {
-          id: 1,
-          visible: true,
-          title: "VIIRS Active Fire 24hr"
-        }]
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            style: "circle",
+            size: 8,
+            color: [255, 69, 0, 0.8],
+            outline: {
+              color: "yellow",
+              width: 1
+            }
+          }
+        },
+        popupTemplate: {
+          title: "🔥 Active Fire Detection",
+          content: `<div style="line-height:1.5">
+            <b>🔥 Fire Brightness:</b> {BRIGHT_TI4} K<br>
+            <b>📅 Detection Date:</b> {ACQ_DATE}<br>
+            <b>🕐 Detection Time:</b> {ACQ_TIME}<br>
+            <b>🛰️ Satellite:</b> {SATELLITE}<br>
+            <b>🔍 Confidence:</b> {CONFIDENCE}<br>
+            <b>📍 Coordinates:</b> {LATITUDE}, {LONGITUDE}<br>
+            <b>📊 Data Source:</b> NASA VIIRS
+          </div>`
+        },
+        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1" // Show only fires from last 24 hours
       });
       map.add(fireLayer, 3);
 
@@ -532,10 +585,10 @@
             layerInfos.push({ layer: googleAqiLayer, title: "Cities (Google AQI)" });
         }
         if (fireLayer && fireLayer.visible) {
-            layerInfos.push({ layer: fireLayer, title: "Active Fires & Thermal Anomalies" });
+            layerInfos.push({ layer: fireLayer, title: "Active Fires & Thermal Hotspots (VIIRS)" });
         }
         if (windLayer && windLayer.visible) {
-            layerInfos.push({ layer: windLayer, title: "Real-time Wind Speed & Direction" });
+            layerInfos.push({ layer: windLayer, title: "Current Weather & Wind Stations" });
         }
         legendWidget.layerInfos = layerInfos;
       }
