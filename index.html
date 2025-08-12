@@ -311,10 +311,6 @@
 <label><input checked="" id="layerWind" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-  <span>Animated Winds (Flow)</span>
-  <label><input id="layerWindAnimated" type="checkbox" checked> Visible</label>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
 <span>Active Fire Hotspots</span>
 <label><input checked="" id="layerFire" type="checkbox"/> Visible</label>
 </div>
@@ -332,9 +328,10 @@
 <div id="overlayStatus"></div>
 </div>
 
+<!-- Mascot Container -->
 <div id="mascotContainer">
     <button id="mascotBtn" title="Click to chat with AQI Assistant">
-        <img src="https://raw.githubusercontent.com/farhanaliofficial/files/main/mascot.png" alt="AQI Warrior mascot" />
+        <img src="./mascot.png" alt="AQI Warrior mascot" />
     </button>
     <div id="chatBubble" class="left">
         <div id="chatInterface">
@@ -358,9 +355,9 @@
     require([
       "esri/Map","esri/views/MapView",
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
-      "esri/layers/ImageryLayer", "esri/renderers/FlowRenderer",
+      "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
       "esri/widgets/Legend","esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, FlowRenderer, Legend, esriConfig) {
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, Legend, esriConfig) {
 
       let googleAqiLayer = null;
       let googleAqiData = null;
@@ -471,12 +468,12 @@
       }
 
       const pm25Layer = new FeatureLayer({
-        url: "https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/AirQualityPM25/FeatureServer/0",
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
-        popupTemplate:{ title:"{Location} ({Country})", content:`<div style="line-height:1.5">
-          <b>City:</b> {City}<br><b>PM2.5:</b> {Value} {Unit}<br><b>Provider:</b> {SourceName}<br>
-          <b>Updated:</b> {LastUpdated}<br><a href="{SourceURL}" target="_blank" rel="noopener">Station link</a></div>` },
-        renderer:{ type:"class-breaks", field:"Value", classBreakInfos:[
+        popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5">
+          <b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br>
+          <b>Updated:</b> {lastUpdated}<br><a href="{url}" target="_blank" rel="noopener">Station link</a></div>` },
+        renderer:{ type:"class-breaks", field:"value", classBreakInfos:[
           {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:"#fff",width:1}},label:"Good (0–10)"},
           {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:10,color:"#ffff00",outline:{color:"#fff",width:1}},label:"Moderate (10–25)"},
           {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:12,color:"#ff7e00",outline:{color:"#fff",width:1}},label:"USG (25–50)"},
@@ -488,7 +485,7 @@
       map.add(pm25Layer);
 
       const citiesLayer = new FeatureLayer({
-        url: "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
+        url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
         renderer:{ type:"simple", symbol:{ type:"simple-marker", size:3, color:[255,255,255,0.4], outline:{ width:.5, color:[0,0,0,.2] } } },
         labelingInfo:[{ symbol:{ type:"text", color:"white", haloColor:"black", haloSize:.5, font:{ family:"Arial", size:8 } },
@@ -497,8 +494,9 @@
       });
       map.add(citiesLayer);
 
+      // Add Wind Layer from Living Atlas - Correct working URL
       windLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0",
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
         title: "Current Weather and Wind Stations",
         opacity: 0.8,
         visible: true,
@@ -506,10 +504,13 @@
           type: "simple",
           symbol: {
             type: "simple-marker",
-            style: "arrow",
+            style: "triangle",
             size: 10,
             color: [0, 150, 255, 0.8],
-            outline: { color: "white", width: 1 }
+            outline: {
+              color: "white",
+              width: 1.5
+            }
           },
           visualVariables: [{
             type: "rotation",
@@ -540,29 +541,9 @@
       });
       map.add(windLayer, 2);
 
-      const animatedWindLayer = new ImageryLayer({
-        url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
-        title: "Animated Winds (Flow)",
-        visible: true,
-        renderer: new FlowRenderer({
-            trailWidth: "2px",
-            density: 1.2,
-            visualVariables: [{
-            type: "color",
-            field: "Magnitude",
-            stops: [
-                { value: 0, color: [40, 146, 199, 1] },
-                { value: 5, color: [160, 194, 155, 1] },
-                { value: 10, color: [218, 230, 119, 1] }
-            ]
-            }]
-        }),
-        effect: "bloom(1.2, 0.5px, 0)"
-      });
-      map.add(animatedWindLayer, 1);
-
+      // Add Fire Layer from NASA FIRMS - Direct WMS service
       fireLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/MODIS_Thermal_v1/FeatureServer/0",
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
         title: "Active Fires & Thermal Hotspots (VIIRS)",
         opacity: 0.9,
         visible: true,
@@ -572,14 +553,17 @@
             type: "simple-marker",
             style: "circle",
             size: 8,
-            color: [255, 80, 0, 0.8],
-            outline: { color: "yellow", width: 1.2 }
+            color: [255, 69, 0, 0.8],
+            outline: {
+              color: "yellow",
+              width: 1
+            }
           }
         },
         popupTemplate: {
           title: "🔥 Active Fire Detection",
           content: `<div style="line-height:1.5">
-            <b>🔥 Fire Brightness:</b> {BRIGHTNESS} K<br>
+            <b>🔥 Fire Brightness:</b> {BRIGHT_TI4} K<br>
             <b>📅 Detection Date:</b> {ACQ_DATE}<br>
             <b>🕐 Detection Time:</b> {ACQ_TIME}<br>
             <b>🛰️ Satellite:</b> {SATELLITE}<br>
@@ -588,7 +572,7 @@
             <b>📊 Data Source:</b> NASA VIIRS
           </div>`
         },
-        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1"
+        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1" // Show only fires from last 24 hours
       });
       map.add(fireLayer, 3);
 
@@ -603,7 +587,7 @@
             layerInfos.push({ layer: googleAqiLayer, title: "Cities (Google AQI)" });
         }
         if (fireLayer && fireLayer.visible) {
-            layerInfos.push({ layer: fireLayer, title: "Active Fires & Thermal Hotspots" });
+            layerInfos.push({ layer: fireLayer, title: "Active Fires & Thermal Hotspots (VIIRS)" });
         }
         if (windLayer && windLayer.visible) {
             layerInfos.push({ layer: windLayer, title: "Current Weather & Wind Stations" });
@@ -645,13 +629,13 @@
         const box=document.getElementById("topCities"); box.innerHTML='<div style="opacity:.85">Updating…</div>';
         try{
           const q=pm25Layer.createQuery();
-          q.where="Value BETWEEN 0 AND 500 AND City IS NOT NULL AND Unit IN ('µg/m³','ug/m3')";
-          q.groupByFieldsForStatistics=["City","Country"];
+          q.where="value BETWEEN 0 AND 500 AND city IS NOT NULL AND unit IN ('µg/m³','ug/m3')";
+          q.groupByFieldsForStatistics=["city","country_name"];
           q.outStatistics=[
-            {statisticType:"avg",onStatisticField:"Value",outStatisticFieldName:"avg_pm25"},
-            {statisticType:"count",onStatisticField:"Value",outStatisticFieldName:"n_stations"}
+            {statisticType:"avg",onStatisticField:"value",outStatisticFieldName:"avg_pm25"},
+            {statisticType:"count",onStatisticField:"value",outStatisticFieldName:"n_stations"}
           ];
-          q.havingClause="COUNT(Value) >= 3"; q.orderByFields=["avg_pm25 DESC"]; q.num=10; q.returnGeometry=false;
+          q.havingClause="COUNT(value) >= 3"; q.orderByFields=["avg_pm25 DESC"]; q.num=10; q.returnGeometry=false;
           const res=await pm25Layer.queryFeatures(q);
           if(!res.features.length){ box.innerHTML='<div style="opacity:.85">No data right now.</div>'; return; }
           const cls=v=>v<=10?"tag good":v<=25?"tag mod":"tag bad";
@@ -660,8 +644,8 @@
             const a=f.attributes,v=a.avg_pm25;
             const row=document.createElement("div");
             row.className="city-item";
-            row.innerHTML=`<span>${a.City}, ${a.Country}</span><span class="${cls(v)}" title="Avg of ${a.n_stations} stations">${Math.round(v)}</span>`;
-            row.addEventListener("click",()=>zoomToCity(a.City,a.Country));
+            row.innerHTML=`<span>${a.city}, ${a.country_name}</span><span class="${cls(v)}" title="Avg of ${a.n_stations} stations">${Math.round(v)}</span>`;
+            row.addEventListener("click",()=>zoomToCity(a.city,a.country_name));
             box.appendChild(row);
           });
         }catch(e){ console.error(e); box.innerHTML='<div style="opacity:.85">Failed to load top cities.</div>'; }
@@ -670,7 +654,7 @@
       async function zoomToCity(city,country){
         const q = pm25Layer.createQuery();
         const esc=s=>String(s).replace(/'/g,"''");
-        q.where=`City='${esc(city)}' AND Country='${esc(country)}' AND Value BETWEEN 0 AND 500`;
+        q.where=`city='${esc(city)}' AND country_name='${esc(country)}' AND value BETWEEN 0 AND 500`;
         q.outFields=["*"]; q.returnGeometry=true; q.num=1;
         const res=await pm25Layer.queryFeatures(q);
         if(res.features.length){
@@ -703,7 +687,6 @@
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerWind").addEventListener("change", e => { if (windLayer) windLayer.visible = e.target.checked; updateLegend(); });
-      document.getElementById("layerWindAnimated").addEventListener("change", e => animatedWindLayer.visible = e.target.checked );
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
