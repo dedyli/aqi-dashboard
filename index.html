@@ -1,14 +1,13 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Global AQI Dashboard - Tsinghua University</title>
-
-  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
-  <script src="https://js.arcgis.com/4.29/"></script>
-
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Global AQI Dashboard - Tsinghua University</title>
+<link href="https://js.arcgis.com/4.29/esri/themes/light/main.css" rel="stylesheet"/>
+<script src="https://js.arcgis.com/4.29/"></script>
+<style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;overflow:hidden}
     .header{background:linear-gradient(135deg,#8B2B8B 0%,#2D2D2D 100%);height:70px;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;box-shadow:0 2px 10px rgba(0,0,0,.3);z-index:1001;position:relative}
@@ -54,96 +53,109 @@
     #composer{display:flex;border-top:1px solid rgba(255,255,255,.12)}
     #q{flex:1;padding:10px;border:0;background:#121212;color:#fff}
     #send{padding:10px 12px;border:0;background:#0079c1;color:#fff;font-weight:700;cursor:pointer}
-  </style>
+  
+/* Mascot chat toggle */
+#chat { display: none; }
+#chat.open { display: flex; }
+
+/* === Draggable mascot + attached conversation bubble === */
+.aqi-float{ user-select:none; touch-action:none; }
+#mascotToggle:focus{ outline-offset:4px; }
+.chat-bubble{
+  position:absolute;
+  display:none;
+  max-width:min(420px, 86vw);
+  max-height:min(70vh, 640px);
+  border-radius:16px;
+  background:#181b22ee;
+  border:1px solid #2a2f3a;
+  box-shadow:0 14px 40px rgba(0,0,0,.45);
+  overflow:hidden;
+  transform: translate(0, -12px);
+}
+.chat-bubble.open{ display:block; }
+.chat-bubble.right{ left: -8px; transform: translate(-100%, -12px); } /* bubble opens to the left of mascot */
+.chat-bubble.left{ left: 84px; } /* bubble opens to the right of mascot */
+.chat-bubble::after{
+  content:"";
+  position:absolute; top:36px; width:0; height:0; border:10px solid transparent;
+}
+.chat-bubble.left::after{
+  left:-1px; transform:translateX(-100%);
+  border-right-color:#181b22ee; border-left-color:transparent;
+}
+.chat-bubble.right::after{
+  right:-1px; transform:translateX(100%);
+  border-left-color:#181b22ee; border-right-color:transparent;
+}
+/* Fit the existing #chat inside the bubble */
+.bubble-chat{ width:min(420px, 86vw); height:min(70vh, 640px); display:flex !important; flex-direction:column; }
+</style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-left">
-      <button id="hamburgerBtn" class="hamburger">☰</button>
-      <div>
-        <h1>Group 62 IEDE Research Topic</h1>
-        <h2>AI-Driven Environmental Monitoring for a Green Economy</h2>
-      </div>
-    </div>
-    <button id="settingsBtn" class="settings">⚙️ Settings</button>
-  </div>
-
-  <aside id="sidebar" class="sidebar">
-    <div class="search">
-      <h3>🔍 Location Search</h3>
-      <input id="searchInput" class="search-input" placeholder="Enter city name…">
-      <button id="searchBtn" class="search-btn">Search Location</button>
-    </div>
-
-    <h3>🏭 Most Polluted Cities (Live)</h3>
-    <div id="topCities"><div style="opacity:.85">Loading…</div></div>
-
-    <h3>🌏 Google AQI Cities</h3>
-    <div id="googleAqiList"><div style="opacity:.85">Loading data...</div></div>
-
-    <h3>📈 Notes</h3>
-    <div style="opacity:.9;font-size:13px">
-      • Live stations: OpenAQ via Esri Living Atlas<br>
-      • World cities: Major cities worldwide<br>
+<div class="header">
+<div class="header-left">
+<button class="hamburger" id="hamburgerBtn">☰</button>
+<div>
+<h1>Group 62 IEDE Research Topic</h1>
+<h2>AI-Driven Environmental Monitoring for a Green Economy</h2>
+</div>
+</div>
+<button class="settings" id="settingsBtn">⚙️ Settings</button>
+</div>
+<aside class="sidebar" id="sidebar">
+<div class="search">
+<h3>🔍 Location Search</h3>
+<input class="search-input" id="searchInput" placeholder="Enter city name…"/>
+<button class="search-btn" id="searchBtn">Search Location</button>
+</div>
+<h3>🏭 Most Polluted Cities (Live)</h3>
+<div id="topCities"><div style="opacity:.85">Loading…</div></div>
+<h3>🌏 Google AQI Cities</h3>
+<div id="googleAqiList"><div style="opacity:.85">Loading data...</div></div>
+<h3>📈 Notes</h3>
+<div style="opacity:.9;font-size:13px">
+      • Live stations: OpenAQ via Esri Living Atlas<br/>
+      • World cities: Major cities worldwide<br/>
       • Regional AQI: Google Air Quality API
     </div>
+<h3>ℹ️ Status</h3>
+<div id="status" style="opacity:.9;font-size:13px"></div>
+</aside>
+<aside class="settings-panel" id="settingsPanel">
+<h3>🗺️ Map Style</h3>
+<div class="basemap-option active" data-basemap="satellite">Satellite</div>
+<div class="basemap-option" data-basemap="streets">Streets</div>
+<div class="basemap-option" data-basemap="hybrid">Hybrid</div>
+<div class="basemap-option" data-basemap="terrain">Terrain</div>
+<div class="basemap-option" data-basemap="dark-gray">Dark Gray</div>
+<div class="basemap-option" data-basemap="topo">Topographic</div>
+<div class="basemap-option" data-basemap="gray">Light Gray</div>
+<div class="basemap-option" data-basemap="oceans">Oceans</div>
+<h3>📊 Data Layers</h3>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+<span>PM2.5 Stations (OpenAQ)</span>
+<label><input checked="" id="layerAQI" type="checkbox"/> Visible</label>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+<span>Cities (Google AQI)</span>
+<label><input checked="" id="layerGoogleAQI" type="checkbox"/> Visible</label>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+<span>World Cities</span>
+<label><input checked="" id="layerCities" type="checkbox"/> Visible</label>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+<span>Legend</span>
+<label><input checked="" id="layerLegend" type="checkbox"/> Visible</label>
+</div>
+</aside>
+<div id="viewDiv">
+<div id="loading">Loading map…</div>
+<div id="overlayStatus"></div>
+</div>
 
-    <h3>ℹ️ Status</h3>
-    <div id="status" style="opacity:.9;font-size:13px"></div>
-  </aside>
-
-  <aside id="settingsPanel" class="settings-panel">
-    <h3>🗺️ Map Style</h3>
-    <div class="basemap-option active" data-basemap="satellite">Satellite</div>
-    <div class="basemap-option" data-basemap="streets">Streets</div>
-    <div class="basemap-option" data-basemap="hybrid">Hybrid</div>
-    <div class="basemap-option" data-basemap="terrain">Terrain</div>
-    <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div>
-    <div class="basemap-option" data-basemap="topo">Topographic</div>
-    <div class="basemap-option" data-basemap="gray">Light Gray</div>
-    <div class="basemap-option" data-basemap="oceans">Oceans</div>
-
-    <h3>📊 Data Layers</h3>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>PM2.5 Stations (OpenAQ)</span>
-      <label><input type="checkbox" id="layerAQI" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-        <span>Cities (Google AQI)</span>
-        <label><input type="checkbox" id="layerGoogleAQI" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>World Cities</span>
-      <label><input type="checkbox" id="layerCities" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span>Legend</span>
-      <label><input type="checkbox" id="layerLegend" checked> Visible</label>
-    </div>
-  </aside>
-
-  <div id="viewDiv">
-    <div id="loading">Loading map…</div>
-    <div id="overlayStatus"></div>
-  </div>
-  
-  <section id="chat" aria-live="polite">
-    <div id="chatHead">
-      <span>AQI Assistant</span>
-      <button id="minBtn" class="cbtn" title="Minimize">–</button>
-    </div>
-    <div id="chatBody">
-      <div id="msgs">
-        <div class="bubble bot">Hi! Ask me about air quality. Try: "What's the PM2.5 in Hanoi?" or "Which are the top 5 most polluted cities right now?"</div>
-      </div>
-      <div id="composer">
-        <input id="q" placeholder="Ask about PM2.5 / AQI…"/>
-        <button id="send">Send</button>
-      </div>
-    </div>
-  </section>
-
-  <script>
+<script>
     require([
       "esri/Map","esri/views/MapView",
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
@@ -513,5 +525,133 @@
       })();
     });
   </script>
+<!-- Floating mascot toggle -->
+
+<script>
+(function(){
+  const btn  = document.getElementById('mascotToggle');
+  const chat = document.getElementById('chat');
+  const minBtn = document.getElementById('minBtn');
+  function setOpen(open){
+    chat.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  }
+  btn.addEventListener('click', ()=> setOpen(!chat.classList.contains('open')));
+  if(minBtn){
+    minBtn.addEventListener('click', ()=> setOpen(false));
+  }
+})();
+</script>
+<div class="aqi-float" id="aqiFloat" style="position:fixed; left: calc(100% - 100px); top: calc(100% - 120px); z-index: 2147483000; width:max-content;"><button aria-controls="chat" aria-expanded="false" id="mascotToggle" style="border:0;background:#202430;padding:8px;border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.35);cursor:pointer" title="Open AQI Assistant">
+<img alt="AQI Assistant mascot" src="./mascot.png" style="width:72px;height:72px;display:block;object-fit:contain"/>
+</button>
+<section aria-label="AQI Assistant" aria-modal="false" class="chat-bubble" id="chatBubble" role="dialog">
+<div class="bubble-body" id="bubbleMount"><section aria-live="polite" class="bubble-chat" id="chat">
+<div id="chatHead">
+<span>AQI Assistant</span>
+<button class="cbtn" id="minBtn" title="Minimize">–</button>
+</div>
+<div id="chatBody">
+<div id="msgs">
+<div class="bubble bot">Hi! Ask me about air quality. Try: "What's the PM2.5 in Hanoi?" or "Which are the top 5 most polluted cities right now?"</div>
+</div>
+<div id="composer">
+<input id="q" placeholder="Ask about PM2.5 / AQI…"/>
+<button id="send">Send</button>
+</div>
+</div>
+</section></div>
+</section>
+</div>
+<script>
+(function(){
+  const wrapper = document.getElementById('aqiFloat');
+  const btn = document.getElementById('mascotToggle');
+  const bubble = document.getElementById('chatBubble');
+  const chat = document.getElementById('chat');
+  const minBtn = document.getElementById('minBtn');
+  const LS_POS = 'aqi-float-pos';
+  const LS_OPEN = 'aqi-chat-open';
+
+  function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
+
+  function setOpen(open){
+    if(!bubble) return;
+    bubble.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+    localStorage.setItem(LS_OPEN, open?'1':'0');
+    updateSide();
+  }
+  function isOpen(){ return bubble.classList.contains('open'); }
+
+  // Decide whether bubble opens to left or right based on viewport
+  function updateSide(){
+    const rect = wrapper.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const openLeft = rect.right > vw - 240; // if near right edge, open to left
+    bubble.classList.toggle('right', openLeft);
+    bubble.classList.toggle('left', !openLeft);
+  }
+
+  // Restore last pos
+  try{
+    const saved = JSON.parse(localStorage.getItem(LS_POS)||'null');
+    if(saved && typeof saved.x==='number' && typeof saved.y==='number'){
+      wrapper.style.left = saved.x + 'px';
+      wrapper.style.top  = saved.y + 'px';
+    }
+  }catch(_){}
+  // Restore open state
+  if(localStorage.getItem(LS_OPEN)==='1'){ setOpen(true); }
+
+  // Toggle open on click
+  btn.addEventListener('click', ()=> setOpen(!isOpen()));
+  if(minBtn){ minBtn.addEventListener('click', ()=> setOpen(false)); }
+
+  // Drag logic (pointer events)
+  let startX=0, startY=0, origX=0, origY=0, dragging=false;
+  function onPointerDown(e){
+    dragging = true;
+    btn.setPointerCapture(e.pointerId);
+    const rect = wrapper.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    origX = rect.left;
+    origY = rect.top;
+    e.preventDefault();
+  }
+  function onPointerMove(e){
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const newX = clamp(origX + dx, 8, vw - 88); // clamp within edges (mascot ~80px wide)
+    const newY = clamp(origY + dy, 8, vh - 88);
+    wrapper.style.left = newX + 'px';
+    wrapper.style.top  = newY + 'px';
+    updateSide();
+  }
+  function onPointerUp(e){
+    if(!dragging) return;
+    dragging = false;
+    btn.releasePointerCapture(e.pointerId);
+    // persist
+    const rect = wrapper.getBoundingClientRect();
+    localStorage.setItem(LS_POS, JSON.stringify({x: Math.round(rect.left), y: Math.round(rect.top)}));
+  }
+  btn.addEventListener('pointerdown', onPointerDown);
+  btn.addEventListener('pointermove', onPointerMove);
+  btn.addEventListener('pointerup', onPointerUp);
+  btn.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('resize', updateSide);
+
+  // Initial side set
+  updateSide();
+
+  // If #chat existed elsewhere, ensure it's visible when open
+  if(chat){ chat.style.display = 'flex'; }
+})();
+</script>
 </body>
 </html>
