@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Global AQI Dashboard - Tsinghua University</title>
 
-  <!-- ArcGIS API -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
   <script src="https://js.arcgis.com/4.29/"></script>
 
@@ -55,19 +54,6 @@
     #composer{display:flex;border-top:1px solid rgba(255,255,255,.12)}
     #q{flex:1;padding:10px;border:0;background:#121212;color:#fff}
     #send{padding:10px 12px;border:0;background:#0079c1;color:#fff;font-weight:700;cursor:pointer}
-
-    /* File upload area */
-    .upload-area{background:rgba(255,255,255,.08);padding:12px;margin:10px 0;border-radius:8px;border:2px dashed rgba(255,255,255,.3);text-align:center;cursor:pointer;transition:all .2s}
-    .upload-area:hover{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.12)}
-    .upload-area.dragover{border-color:#0079c1;background:rgba(0,121,193,.1)}
-    .file-input{display:none}
-    .upload-btn{width:100%;padding:8px;background:#0079c1;border:0;border-radius:4px;color:#fff;cursor:pointer;font-weight:700;margin-top:8px}
-    .upload-btn:hover{background:#005a8b}
-    .status-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
-    .status-success{background:#00e400}
-    .status-error{background:#ff4444}
-    .status-loading{background:#ffff00;animation:pulse 1s infinite}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
   </style>
 </head>
 <body>
@@ -92,14 +78,14 @@
     <h3>🏭 Most Polluted Cities (Live)</h3>
     <div id="topCities"><div style="opacity:.85">Loading…</div></div>
 
-    <h3>🇨🇳 Custom AQI Data (China)</h3>
-    <div id="customAqiList"><div style="opacity:.85">Load GeoJSON file to see data…</div></div>
+    <h3>🌏 Google AQI Cities</h3>
+    <div id="googleAqiList"><div style="opacity:.85">Loading data...</div></div>
 
     <h3>📈 Notes</h3>
     <div style="opacity:.9;font-size:13px">
       • Live stations: OpenAQ via Esri Living Atlas<br>
       • World cities: Major cities worldwide<br>
-      • <b>📁 Custom GeoJSON: Your live AQI data from IQAir</b>
+      • Regional AQI: Google Air Quality API
     </div>
 
     <h3>ℹ️ Status</h3>
@@ -123,32 +109,16 @@
       <label><input type="checkbox" id="layerAQI" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+        <span>Cities (Google AQI)</span>
+        <label><input type="checkbox" id="layerGoogleAQI" checked> Visible</label>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>World Cities</span>
       <label><input type="checkbox" id="layerCities" checked> Visible</label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-      <span><b>📁 Custom GeoJSON Layer</b></span>
-      <label><input type="checkbox" id="layerGeoJSON" checked> Visible</label>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
       <span>Legend</span>
       <label><input type="checkbox" id="layerLegend" checked> Visible</label>
-    </div>
-
-    <h3>📁 Load Custom AQI Data</h3>
-    <div class="upload-area" id="uploadArea">
-      <div style="margin-bottom:8px">
-        <span id="geoJsonStatus" class="status-indicator status-error"></span>
-        <span>GeoJSON Status</span>
-      </div>
-      <div style="font-size:14px;margin-bottom:8px">📁 Drop GeoJSON file here</div>
-      <div style="font-size:12px;opacity:.8">or click to browse</div>
-      <input type="file" id="fileInput" class="file-input" accept=".geojson,.json">
-      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse Files</button>
-    </div>
-
-    <div style="font-size:11px;opacity:.8;margin:8px 0;line-height:1.3">
-      💡 <b>Tip:</b> Load the GeoJSON file created by your Python script (Live_China_AQI_Data_*.geojson) to display your live AQI data.
     </div>
   </aside>
 
@@ -156,8 +126,7 @@
     <div id="loading">Loading map…</div>
     <div id="overlayStatus"></div>
   </div>
-
-  <!-- Chat (unchanged stub) -->
+  
   <section id="chat" aria-live="polite">
     <div id="chatHead">
       <span>AQI Assistant</span>
@@ -165,7 +134,7 @@
     </div>
     <div id="chatBody">
       <div id="msgs">
-        <div class="bubble bot">Hi! Upload your GeoJSON file to see live AQI data. Try: "Show me Beijing AQI" or "Which city has the worst air quality?"</div>
+        <div class="bubble bot">Hi! Ask me about air quality. Try: "What's the PM2.5 in Hanoi?" or "Which are the top 5 most polluted cities right now?"</div>
       </div>
       <div id="composer">
         <input id="q" placeholder="Ask about PM2.5 / AQI…"/>
@@ -181,279 +150,112 @@
       "esri/widgets/Legend","esri/config"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, Legend, esriConfig) {
 
-      let customGeoJSONLayer = null;
-      let currentGeoJSONData = null;
+      let googleAqiLayer = null;
+      let googleAqiData = null; // Store fetched data
       
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
         container: "viewDiv",
-        map, center: [105,35], zoom: 4,
-        popup: { dockEnabled: true, dockOptions:{ buttonEnabled:false, breakpoint:false, position:"bottom-right" } }
+        map, center: [105, 35], zoom: 4,
+        popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
 
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
 
-      const toast = (msg,ms=2200)=>{ const el=document.getElementById("overlayStatus"); el.textContent=msg; el.style.display="block"; clearTimeout(el._t); el._t=setTimeout(()=>el.style.display="none",ms); };
+      const toast = (msg, ms = 2200) => {
+        const el = document.getElementById("overlayStatus");
+        el.textContent = msg;
+        el.style.display = "block";
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.style.display = "none", ms);
+      };
 
-      // Function to update status indicator
-      function updateGeoJSONStatus(status) {
-        const indicator = document.getElementById("geoJsonStatus");
-        indicator.className = `status-indicator status-${status}`;
-      }
-
-      // Function to create GeoJSON layer from data
-      function createGeoJSONLayer(geoJsonData) {
-        // Create blob URL for the GeoJSON data
+      function createGoogleAqiLayer(geoJsonData) {
         const blob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-
+        
         return new GeoJSONLayer({
           url: url,
-          title: "Custom AQI Data (GeoJSON)",
-          copyright: "© IQAir API - Live Data",
+          title: "Cities (Google AQI)",
+          copyright: "© Google Air Quality API - Live Data",
           renderer: {
             type: "class-breaks",
-            field: "AQI",
+            field: "aqi",
             classBreakInfos: [
-              {
-                minValue: 0,
-                maxValue: 50,
-                symbol: {
-                  type: "simple-marker",
-                  size: 14,
-                  color: "#00e400",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Good (0–50)"
-              },
-              {
-                minValue: 51,
-                maxValue: 100,
-                symbol: {
-                  type: "simple-marker",
-                  size: 16,
-                  color: "#ffff00",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Moderate (51–100)"
-              },
-              {
-                minValue: 101,
-                maxValue: 150,
-                symbol: {
-                  type: "simple-marker",
-                  size: 18,
-                  color: "#ff7e00",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Unhealthy for Sensitive Groups (101–150)"
-              },
-              {
-                minValue: 151,
-                maxValue: 200,
-                symbol: {
-                  type: "simple-marker",
-                  size: 20,
-                  color: "#ff0000",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Unhealthy (151–200)"
-              },
-              {
-                minValue: 201,
-                maxValue: 300,
-                symbol: {
-                  type: "simple-marker",
-                  size: 22,
-                  color: "#8f3f97",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Very Unhealthy (201–300)"
-              },
-              {
-                minValue: 301,
-                maxValue: 9999,
-                symbol: {
-                  type: "simple-marker",
-                  size: 24,
-                  color: "#7e0023",
-                  outline: { color: "#fff", width: 2 }
-                },
-                label: "Hazardous (300+)"
-              }
+              { minValue: 0, maxValue: 50, symbol: { type: "simple-marker", style: "triangle", size: 12, color: "#00e400", outline: { color: "#fff", width: 1.5 } }, label: "Good (0–50)" },
+              { minValue: 51, maxValue: 100, symbol: { type: "simple-marker", style: "triangle", size: 14, color: "#ffff00", outline: { color: "#fff", width: 1.5 } }, label: "Moderate (51–100)" },
+              { minValue: 101, maxValue: 150, symbol: { type: "simple-marker", style: "triangle", size: 16, color: "#ff7e00", outline: { color: "#fff", width: 1.5 } }, label: "Unhealthy for Sensitive (101–150)" },
+              { minValue: 151, maxValue: 200, symbol: { type: "simple-marker", style: "triangle", size: 18, color: "#ff0000", outline: { color: "#fff", width: 1.5 } }, label: "Unhealthy (151–200)" },
+              { minValue: 201, maxValue: 300, symbol: { type: "simple-marker", style: "triangle", size: 20, color: "#8f3f97", outline: { color: "#fff", width: 1.5 } }, label: "Very Unhealthy (201–300)" },
+              { minValue: 301, maxValue: 9999, symbol: { type: "simple-marker", style: "triangle", size: 22, color: "#7e0023", outline: { color: "#fff", width: 1.5 } }, label: "Hazardous (300+)" }
             ]
           },
           popupTemplate: {
-            title: "{City} - Live AQI Data",
+            title: "{name} - Google AQI",
             content: `<div style="line-height:1.5">
-              <b>🌬️ AQI:</b> <span style="font-size:18px;font-weight:bold;color:{Color}">{AQI}</span><br>
-              <b>📊 Category:</b> {AQI_Category}<br>
-              <b>🌡️ Temperature:</b> {Temp_C}°C<br>
-              <b>🕒 Last Updated:</b> {Time_UTC}<br>
-              <b>📍 Location:</b> {City}<br>
-              <b>📊 Data Source:</b> IQAir API (Live)
+              <b>🌬️ US AQI:</b> <span style="font-size:18px;font-weight:bold;">{aqi}</span><br>
+              <b>📊 Category:</b> {category}<br>
+              <b>💨 Dominant Pollutant:</b> {main_pollutant}<br>
+              <b>🕒 Last Updated:</b> {time}<br>
+              <b>📍 Location:</b> {name}<br>
+              <b>📊 Data Source:</b> {source}
             </div>`
           }
         });
       }
 
-      // Function to load GeoJSON data
-      async function loadGeoJSONData(geoJsonData) {
+      async function loadGoogleAqiData() {
         try {
-          updateGeoJSONStatus("loading");
-          toast("Loading custom AQI data...", 2000);
+          toast("Loading Google AQI data...", 3000);
+          const response = await fetch('/.netlify/functions/google-aqi');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          googleAqiData = await response.json();
 
-          // Remove existing custom layer if present
-          if (customGeoJSONLayer) {
-            map.remove(customGeoJSONLayer);
-          }
+          if (googleAqiData.warning) console.warn("API Warning:", googleAqiData.warning);
 
-          // Create and add new layer
-          customGeoJSONLayer = createGeoJSONLayer(geoJsonData);
-          map.add(customGeoJSONLayer);
+          googleAqiLayer = createGoogleAqiLayer(googleAqiData);
+          map.add(googleAqiLayer, 1); // Add below PM2.5 layer
 
-          // Store the data for reference
-          currentGeoJSONData = geoJsonData;
-
-          // Wait for layer to load
-          await customGeoJSONLayer.load();
-
-          // Update legend
-          if (legendWidget) {
-            legendWidget.layerInfos = [
-              { layer: pm25Layer, title: "PM2.5 (μg/m³) — Live Stations" },
-              { layer: customGeoJSONLayer, title: "AQI — Custom Data (China)" }
-            ];
-          }
-
-          updateGeoJSONStatus("success");
-          toast("✅ Custom AQI data loaded successfully!");
+          await googleAqiLayer.load();
+          toast("✅ Google AQI data loaded!");
           updateStatus();
-          updateCustomAqiList(geoJsonData);
-
+          updateLegend();
+          updateGoogleAqiList(googleAqiData);
         } catch (error) {
-          console.error("Failed to load GeoJSON data:", error);
-          updateGeoJSONStatus("error");
-          toast("❌ Failed to load GeoJSON data");
+          console.error("Failed to load Google AQI data:", error);
+          toast("❌ Failed to load Google AQI data");
+          document.getElementById("googleAqiList").innerHTML = `<div style="opacity:.85; color: #ffdddd;">Failed to load.</div>`;
+          updateStatus();
         }
       }
-
-      // Function to update custom AQI list in sidebar
-      function updateCustomAqiList(geoJsonData) {
-        const listElement = document.getElementById("customAqiList");
-        
-        if (!geoJsonData.features || geoJsonData.features.length === 0) {
-          listElement.innerHTML = '<div style="opacity:.85">No data available</div>';
-          return;
-        }
-
-        // Sort cities by AQI (worst first)
-        const cities = geoJsonData.features
-          .map(f => f.properties)
-          .sort((a, b) => b.AQI - a.AQI);
-
-        const getAqiClass = (aqi) => {
-          if (aqi <= 50) return "tag good";
-          if (aqi <= 100) return "tag mod";
-          return "tag bad";
-        };
-
-        listElement.innerHTML = "";
-        cities.forEach(city => {
-          const row = document.createElement("div");
-          row.className = "city-item";
-          row.innerHTML = `
-            <span>${city.City}</span>
-            <span class="${getAqiClass(city.AQI)}" title="${city.AQI_Category}">${city.AQI}</span>
-          `;
-          row.addEventListener("click", () => {
-            // Find the feature and zoom to it
-            const feature = geoJsonData.features.find(f => f.properties.City === city.City);
-            if (feature) {
-              const coords = feature.geometry.coordinates;
-              view.goTo({ center: coords, zoom: 12 }, { duration: 1500 });
-            }
-          });
-          listElement.appendChild(row);
-        });
-      }
-
-      // File upload handling
-      const uploadArea = document.getElementById("uploadArea");
-      const fileInput = document.getElementById("fileInput");
-
-      // Click to upload
-      uploadArea.addEventListener("click", () => {
-        fileInput.click();
-      });
-
-      // Drag and drop
-      uploadArea.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        uploadArea.classList.add("dragover");
-      });
-
-      uploadArea.addEventListener("dragleave", () => {
-        uploadArea.classList.remove("dragover");
-      });
-
-      uploadArea.addEventListener("drop", (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove("dragover");
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-          handleFileUpload(files[0]);
-        }
-      });
-
-      // File input change
-      fileInput.addEventListener("change", (e) => {
-        if (e.target.files.length > 0) {
-          handleFileUpload(e.target.files[0]);
-        }
-      });
-
-      // Handle file upload
-      function handleFileUpload(file) {
-        if (!file.name.toLowerCase().endsWith('.geojson') && !file.name.toLowerCase().endsWith('.json')) {
-          toast("❌ Please select a GeoJSON file (.geojson or .json)");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          try {
-            const geoJsonData = JSON.parse(e.target.result);
-            
-            // Validate GeoJSON structure
-            if (!geoJsonData.type || geoJsonData.type !== "FeatureCollection") {
-              throw new Error("Invalid GeoJSON format");
-            }
-
-            loadGeoJSONData(geoJsonData);
-            
-            // Update upload area text
-            uploadArea.innerHTML = `
-              <div style="margin-bottom:8px">
-                <span id="geoJsonStatus" class="status-indicator status-success"></span>
-                <span>GeoJSON Loaded</span>
-              </div>
-              <div style="font-size:12px;opacity:.8">📁 ${file.name}</div>
-              <div style="font-size:11px;opacity:.6">${geoJsonData.features.length} cities loaded</div>
-              <button class="upload-btn" onclick="document.getElementById('fileInput').click()" style="margin-top:8px">Load Different File</button>
-            `;
-
-          } catch (error) {
-            console.error("Error parsing GeoJSON:", error);
-            toast("❌ Error parsing GeoJSON file");
-            updateGeoJSONStatus("error");
+      
+      function updateGoogleAqiList(geoJsonData) {
+          const listElement = document.getElementById("googleAqiList");
+          if (!geoJsonData || !geoJsonData.features || geoJsonData.features.length === 0) {
+              listElement.innerHTML = '<div style="opacity:.85">No data available</div>';
+              return;
           }
-        };
-
-        reader.readAsText(file);
+          const cities = geoJsonData.features.map(f => f.properties).sort((a, b) => b.aqi - a.aqi);
+          const getAqiClass = (aqi) => {
+              if (aqi <= 50) return "tag good";
+              if (aqi <= 100) return "tag mod";
+              return "tag bad";
+          };
+          listElement.innerHTML = "";
+          cities.forEach(city => {
+              const row = document.createElement("div");
+              row.className = "city-item";
+              row.innerHTML = `<span>${city.name}</span><span class="${getAqiClass(city.aqi)}">${city.aqi}</span>`;
+              row.addEventListener("click", () => {
+                  const feature = geoJsonData.features.find(f => f.properties.name === city.name);
+                  if (feature) {
+                      view.goTo({ center: feature.geometry.coordinates, zoom: 11 }, { duration: 1500 });
+                  }
+              });
+              listElement.appendChild(row);
+          });
       }
 
-      /* PM2.5 Stations (OpenAQ) */
       const pm25Layer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
@@ -471,7 +273,6 @@
       });
       map.add(pm25Layer);
 
-      /* World Cities */
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
@@ -482,31 +283,49 @@
       });
       map.add(citiesLayer);
 
-      /* Legend */
-      let legendWidget=null;
-      view.whenLayerView(pm25Layer).then(()=>{
-        legendWidget = new Legend({ view, layerInfos:[
-          { layer: pm25Layer, title:"PM2.5 (μg/m³) — Live Stations" }
-        ]});
-        view.ui.add(legendWidget, "bottom-left");
-        document.getElementById("loading").style.display="none";
-        updateStatus();
-        refreshTopCities();
-        setInterval(refreshTopCities, 30*60*1000);
-      });
-
-      function updateStatus(){
-        pm25Layer.queryFeatureCount().then(c=>{
-          let statusText = `✓ PM2.5 stations connected (${c.toLocaleString()} points).`;
-          if (customGeoJSONLayer && customGeoJSONLayer.loaded) {
-            const featureCount = currentGeoJSONData ? currentGeoJSONData.features.length : 0;
-            statusText += ` 📁 Custom GeoJSON active (${featureCount} cities).`;
-          }
-          document.getElementById("status").textContent = statusText;
-        }).catch(()=>{ document.getElementById("status").textContent = "⚠️ Connected, but could not count features."; });
+      let legendWidget = null;
+      function updateLegend() {
+        if (!legendWidget) return;
+        const layerInfos = [];
+        if (pm25Layer && pm25Layer.visible) {
+            layerInfos.push({ layer: pm25Layer, title: "PM2.5 (μg/m³) — Live Stations" });
+        }
+        if (googleAqiLayer && googleAqiLayer.visible) {
+            layerInfos.push({ layer: googleAqiLayer, title: "Cities (Google AQI)" });
+        }
+        legendWidget.layerInfos = layerInfos;
       }
 
-      /* Top 10 polluted cities */
+      view.whenLayerView(pm25Layer).then(() => {
+        legendWidget = new Legend({ view, layerInfos:[] });
+        view.ui.add(legendWidget, "bottom-left");
+        document.getElementById("loading").style.display = "none";
+        
+        loadGoogleAqiData();
+        updateStatus();
+        updateLegend();
+        refreshTopCities();
+        setInterval(refreshTopCities, 30 * 60 * 1000);
+      });
+
+      function updateStatus() {
+        const statusParts = [];
+        pm25Layer.queryFeatureCount().then(c => {
+            statusParts.push(`✓ PM2.5 stations connected (${c.toLocaleString()})`);
+            if (googleAqiLayer && googleAqiLayer.loaded) {
+                const count = googleAqiData ? googleAqiData.features.length : 0;
+                statusParts.push(`✓ Google AQI active (${count} cities)`);
+            } else if (googleAqiLayer) {
+                statusParts.push(`... Google AQI loading...`);
+            } else {
+                 statusParts.push(`❌ Google AQI failed to load.`);
+            }
+            document.getElementById("status").innerHTML = statusParts.join('<br>');
+        }).catch(() => {
+            document.getElementById("status").textContent = "⚠️ Could not connect to all data sources.";
+        });
+      }
+
       async function refreshTopCities(){
         const box=document.getElementById("topCities"); box.innerHTML='<div style="opacity:.85">Updating…</div>';
         try{
@@ -518,10 +337,8 @@
             {statisticType:"count",onStatisticField:"value",outStatisticFieldName:"n_stations"}
           ];
           q.havingClause="COUNT(value) >= 3"; q.orderByFields=["avg_pm25 DESC"]; q.num=10; q.returnGeometry=false;
-
           const res=await pm25Layer.queryFeatures(q);
           if(!res.features.length){ box.innerHTML='<div style="opacity:.85">No data right now.</div>'; return; }
-
           const cls=v=>v<=10?"tag good":v<=25?"tag mod":"tag bad";
           box.innerHTML="";
           res.features.forEach(f=>{
@@ -536,18 +353,19 @@
       }
 
       async function zoomToCity(city,country){
+        const q = pm25Layer.createQuery();
         const esc=s=>String(s).replace(/'/g,"''");
         q.where=`city='${esc(city)}' AND country_name='${esc(country)}' AND value BETWEEN 0 AND 500`;
         q.outFields=["*"]; q.returnGeometry=true; q.num=1;
         const res=await pm25Layer.queryFeatures(q);
         if(res.features.length){
-          const g=res.features[0].geometry;
-          view.goTo({ center:g, zoom:11 }, { duration:1500 });
+          view.goTo({ center: res.features[0].geometry, zoom:11 }, { duration:1500 });
         }
       }
-      window.zoomToCity=zoomToCity;
 
-      /* Panels + toggles */
+      // Make zoomToCity globally available for the chat assistant
+      window.zoomToCity = zoomToCity;
+
       function togglePanel(id,cls){
         const panel=document.getElementById(id);
         const viewDiv=document.getElementById("viewDiv");
@@ -568,68 +386,132 @@
         });
       });
 
-      document.getElementById("layerAQI").addEventListener("change", e=> pm25Layer.visible = e.target.checked);
-      document.getElementById("layerCities").addEventListener("change", e=> citiesLayer.visible = e.target.checked);
-      document.getElementById("layerLegend").addEventListener("change", e=> { if(legendWidget) legendWidget.visible = e.target.checked; });
-      document.getElementById("layerGeoJSON").addEventListener("change", e=> { if(customGeoJSONLayer) customGeoJSONLayer.visible = e.target.checked; });
+      document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
+      document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
 
-      /* Quick search */
       function performSearch(){
-        const q=document.getElementById("searchInput").value.toLowerCase().trim(); if(!q) return;
+        const term = document.getElementById("searchInput").value.toLowerCase().trim();
+        if (!term) return;
         
-        // First try to search in custom GeoJSON data
-        if (currentGeoJSONData && currentGeoJSONData.features) {
-          const matchingCity = currentGeoJSONData.features.find(f => 
-            f.properties.City.toLowerCase().includes(q)
-          );
-          if (matchingCity) {
-            const coords = matchingCity.geometry.coordinates;
-            view.goTo({ center: coords, zoom: 12 }, { duration: 1500 });
-            toast(`📍 Found ${matchingCity.properties.City} in custom data`);
+        if (googleAqiData && googleAqiData.features) {
+          const match = googleAqiData.features.find(f => f.properties.name.toLowerCase().includes(term));
+          if (match) {
+            view.goTo({ center: match.geometry.coordinates, zoom: 12 }, { duration: 1500 });
+            toast(`📍 Found ${match.properties.name} in Google AQI data`);
             return;
           }
         }
         
-        // Fall back to predefined cities
-        const cities={'beijing':[116.4074,39.9042,12],'delhi':[77.2090,28.6139,12],'new york':[-74.0060,40.7128,11],
-          'london':[-0.1278,51.5074,11],'tokyo':[139.6503,35.6762,11],'mumbai':[72.8777,19.0760,12],
-          'lahore':[74.3587,31.5204,12],'dhaka':[90.4125,23.8103,12],'shanghai':[121.4737,31.2304,11],
-          'paris':[2.3522,48.8566,11],'los angeles':[-118.2437,34.0522,10],'cairo':[31.2357,30.0444,11],
-          'bangkok':[100.5018,13.7563,11],'jakarta':[106.8456,-6.2088,11],'seoul':[126.9780,37.5665,11],
-          'mexico city':[-99.1332,19.4326,11],'singapore':[103.8198,1.3521,12],'sydney':[151.2093,-33.8688,10],'dubai':[55.2708,25.2048,11]};
-        const p=cities[q]; 
-        if(p) {
-          view.goTo({ center:[p[0],p[1]], zoom:p[2] }, { duration:1500 });
-        } else {
-          alert("City not found. Try: Beijing, Delhi, New York, London, Tokyo… or load your GeoJSON file first");
+        const query = citiesLayer.createQuery();
+        query.where = `LOWER(CITY_NAME) LIKE '%${term.replace(/'/g, "''")}%'`;
+        query.outFields = ["CITY_NAME", "CNTRY_NAME"];
+        query.returnGeometry = true;
+        citiesLayer.queryFeatures(query).then(result => {
+            if (result.features.length > 0) {
+                const feature = result.features[0];
+                view.goTo(feature.geometry);
+                toast(`📍 Found ${feature.attributes.CITY_NAME}`);
+            } else {
+                toast("City not found in available data.", 2500);
+            }
+        });
+      }
+      document.getElementById("searchBtn").addEventListener("click", performSearch);
+      document.getElementById("searchInput").addEventListener("keypress", e => { if(e.key === "Enter") performSearch(); });
+    
+      /* AQI Assistant Chat Controller */
+      (function(){
+        const chat = document.getElementById("chat");
+        const head = document.getElementById("chatHead");
+        const body = document.getElementById("chatBody");
+        const minBtn = document.getElementById("minBtn");
+        const msgs = document.getElementById("msgs");
+        const q = document.getElementById("q");
+        const send = document.getElementById("send");
+
+        let history = [];
+        let drag = false, offX = 0, offY = 0;
+
+        head.addEventListener("mousedown", e => { 
+          if (e.target === minBtn) return; 
+          drag = true; 
+          const r = chat.getBoundingClientRect(); 
+          offX = e.clientX - r.left; 
+          offY = e.clientY - r.top; 
+          chat.style.right = "auto"; 
+          chat.style.bottom = "auto"; 
+        });
+        window.addEventListener("mousemove", e => { 
+          if (!drag) return; 
+          chat.style.left = (e.clientX - offX) + "px"; 
+          chat.style.top = (e.clientY - offY) + "px"; 
+        });
+        window.addEventListener("mouseup", () => drag = false);
+        minBtn.addEventListener("click", () => { 
+          const isOpen = body.style.display !== "none"; 
+          body.style.display = isOpen ? "none" : "flex"; 
+          minBtn.textContent = isOpen ? "⊕" : "–"; 
+        });
+
+        function addBubble(text, who = "bot", data = {}) {
+          const d = document.createElement("div");
+          d.className = `bubble ${who}`;
+          d.textContent = text;
+          msgs.appendChild(d);
+          msgs.scrollTop = msgs.scrollHeight;
+          return d;
         }
-      }
-      document.getElementById("searchBtn").addEventListener("click",performSearch);
-      document.getElementById("searchInput").addEventListener("keypress",e=>{ if(e.key==="Enter") performSearch(); });
+
+        async function sendMsg(){
+          const text = q.value.trim();
+          if (!text) return;
+
+          addBubble(text, "me");
+          history.push({ role: "user", content: text });
+          q.value = "";
+          q.disabled = true;
+          send.disabled = true;
+
+          const thinking = addBubble("Thinking…", "bot");
+
+          try {
+            const resp = await fetch("/.netlify/functions/AQI-Chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userMessage: text, history: history.slice(0, -1) }) // Send history *before* this turn
+            });
+
+            if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
+
+            const data = await resp.json();
+            thinking.textContent = (typeof data.reply === "string" && data.reply.trim()) ? data.reply : "I don't have a response for that.";
+            
+            history.push({ role: "assistant", content: data.reply });
+
+            // Handle the action returned by the server function
+            if (data.action && data.action.type === 'zoomTo') {
+              const { city, country } = data.action;
+              if (window.zoomToCity) {
+                toast(`🗺️ Zooming to ${city}...`);
+                window.zoomToCity(city, country);
+              }
+            }
+          } catch(err) {
+            console.error("Chat error:", err);
+            thinking.textContent = "Sorry, I couldn't connect to the server. Please try again in a moment.";
+            history.pop(); // Remove the user message from history if the call failed
+          } finally {
+            q.disabled = false;
+            send.disabled = false;
+            q.focus();
+          }
+        }
+        send.addEventListener("click", sendMsg);
+        q.addEventListener("keypress", e => { if(e.key === "Enter") sendMsg(); });
+      })();
     });
-
-    /* Chat stub (unchanged) */
-    (function(){
-      const chat=document.getElementById("chat"), head=document.getElementById("chatHead"), body=document.getElementById("chatBody"), minBtn=document.getElementById("minBtn");
-      const msgs=document.getElementById("msgs"), q=document.getElementById("q"), send=document.getElementById("send");
-      let drag=false, offX=0, offY=0;
-      head.addEventListener("mousedown",e=>{ if(e.target===minBtn) return; drag=true; const r=chat.getBoundingClientRect(); offX=e.clientX-r.left; offY=e.clientY-r.top; chat.style.right="auto"; chat.style.bottom="auto"; });
-      window.addEventListener("mousemove",e=>{ if(!drag) return; chat.style.left=(e.clientX-offX)+"px"; chat.style.top=(e.clientY-offY)+"px"; });
-      window.addEventListener("mouseup",()=>drag=false);
-      minBtn.addEventListener("click",()=>{ const isOpen=body.style.display!=="none"; body.style.display=isOpen?"none":"flex"; minBtn.textContent=isOpen?"+":"–"; });
-
-      function addBubble(text,who="bot"){ const d=document.createElement("div"); d.className=`bubble ${who}`; d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
-      async function sendMsg(){
-        const text=q.value.trim(); if(!text) return; addBubble(text,"me"); q.value="";
-        const thinking=document.createElement("div"); thinking.className="bubble bot"; thinking.textContent="Thinking…"; msgs.appendChild(thinking); msgs.scrollTop=msgs.scrollHeight;
-        try{
-          const resp=await fetch("/.netlify/functions/AQI-Chat",{method:"POST",headers:{ "Content-Type":"application/json","Cache-Control":"no-store"},cache:"no-store",body:JSON.stringify({userMessage:text,history:[]})});
-          const data=await resp.json(); thinking.textContent=(typeof data.reply==="string" && data.reply.trim())?data.reply:"The server returned no text.";
-        }catch(err){ console.error(err); thinking.textContent="Error connecting to server."; }
-      }
-      send.addEventListener("click",sendMsg);
-      q.addEventListener("keypress",e=>{ if(e.key==="Enter") sendMsg(); });
-    })();
   </script>
 </body>
 </html>
