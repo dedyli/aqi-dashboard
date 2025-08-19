@@ -42,6 +42,16 @@
     #loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#8B2B8B}
     #overlayStatus{position:absolute;top:78px;right:12px;z-index:1002;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;display:none}
 
+    /* Wind Controls Styling */
+    .wind-control{margin:8px 0}
+    .wind-control label{display:block;margin-bottom:4px;font-size:13px}
+    .wind-control input[type="range"]{width:100%;margin-bottom:4px}
+    .wind-control-value{font-weight:bold;color:#00e400}
+    .preset-buttons{display:flex;gap:4px;margin-top:8px}
+    .preset-btn{flex:1;padding:6px 4px;background:rgba(255,255,255,.1);border:0;color:#fff;border-radius:6px;cursor:pointer;font-size:11px;transition:background .2s}
+    .preset-btn:hover{background:rgba(255,255,255,.2)}
+    .preset-btn.active{background:#0079c1}
+
     /* Mascot and Chat Bubble Styles */
     #mascotContainer {
         position: fixed;
@@ -274,14 +284,14 @@
 </div>
 <h3>🏭 Most Polluted Cities (Live)</h3>
 <div id="topCities"><div style="opacity:.85">Loading…</div></div>
-<h3>🌏 Google AQI Cities</h3>
+<h3>🌍 Google AQI Cities</h3>
 <div id="googleAqiList"><div style="opacity:.85">Loading data...</div></div>
 <h3>📈 Notes</h3>
 <div style="opacity:.9;font-size:13px">
       • Live stations: OpenAQ via Esri Living Atlas<br/>
       • World cities: Major cities worldwide<br/>
       • Regional AQI: Google Air Quality API<br/>
-      • Wind data: NOAA METAR weather stations<br/>
+      • Wind data: NLDAS Hurricane Ida (animated)<br/>
       • Fire data: NASA VIIRS thermal hotspots (24hr)
     </div>
 <h3>ℹ️ Status</h3>
@@ -307,8 +317,12 @@
 <label><input checked="" id="layerGoogleAQI" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-<span>Weather & Wind Stations</span>
+<span>🌪️ Animated Wind Flow</span>
 <label><input checked="" id="layerWind" type="checkbox"/> Visible</label>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+<span>🌡️ Weather Stations</span>
+<label><input id="layerWeatherStations" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
 <span>Active Fire Hotspots</span>
@@ -321,6 +335,25 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
 <span>Legend</span>
 <label><input checked="" id="layerLegend" type="checkbox"/> Visible</label>
+</div>
+
+<h3>🌪️ Wind Animation Settings</h3>
+<div class="wind-control">
+  <label>Flow Speed: <span class="wind-control-value" id="speedValue">8</span></label>
+  <input type="range" id="windSpeed" min="1" max="20" value="8">
+</div>
+<div class="wind-control">
+  <label>Density: <span class="wind-control-value" id="densityValue">0.6</span></label>
+  <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.6">
+</div>
+<div class="wind-control">
+  <label>Trail Length: <span class="wind-control-value" id="trailValue">150</span></label>
+  <input type="range" id="windTrail" min="50" max="300" value="150">
+</div>
+<div class="preset-buttons">
+  <button class="preset-btn" onclick="setWindPreset('subtle')">Subtle</button>
+  <button class="preset-btn active" onclick="setWindPreset('normal')">Normal</button>
+  <button class="preset-btn" onclick="setWindPreset('intense')">Intense</button>
 </div>
 </aside>
 <div id="viewDiv">
@@ -356,12 +389,14 @@
       "esri/Map","esri/views/MapView",
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
       "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
+      "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
       "esri/widgets/Legend","esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, Legend, esriConfig) {
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
 
       let googleAqiLayer = null;
       let googleAqiData = null;
       let windLayer = null;
+      let weatherStationsLayer = null;
       let fireLayer = null;
       
       const map = new Map({ basemap: "satellite" });
@@ -494,23 +529,58 @@
       });
       map.add(citiesLayer);
 
-      // Add Wind Layer from Living Atlas - Correct working URL
-      windLayer = new FeatureLayer({
-        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
-        title: "Current Weather and Wind Stations",
-        opacity: 0.8,
+      // Animated Wind Streamlines Layer
+      windLayer = new ImageryTileLayer({
+        url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
+        title: "Animated Wind Flow",
+        opacity: 0.85,
         visible: true,
+        renderer: new FlowRenderer({
+          type: "flow",
+          density: 0.6,
+          flowSpeed: 8,
+          trailLength: 150,
+          trailWidth: "2px",
+          maxPathLength: 200,
+          visualVariables: [{
+            type: "color",
+            field: "Magnitude",
+            stops: [
+              { color: [65, 150, 255, 0.7], value: 0 },
+              { color: [100, 200, 255, 0.8], value: 3 },
+              { color: [150, 255, 150, 0.9], value: 8 },
+              { color: [255, 255, 100, 0.9], value: 15 },
+              { color: [255, 150, 50, 1], value: 25 },
+              { color: [255, 50, 50, 1], value: 35 }
+            ]
+          }]
+        }),
+        popupTemplate: {
+          title: "🌪️ Wind Data",
+          content: `<div style="line-height:1.5">
+            <b>💨 Wind Speed:</b> {Magnitude} m/s<br>
+            <b>🧭 Wind Direction:</b> {Direction}°<br>
+            <b>📊 Data Source:</b> NLDAS Hourly Wind Data<br>
+            <b>🕒 Time Period:</b> Hurricane Ida (Aug 30, 2021)
+          </div>`
+        }
+      });
+      map.add(windLayer, 2);
+
+      // Weather Stations Layer
+      weatherStationsLayer = new FeatureLayer({
+        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
+        title: "Weather Stations",
+        opacity: 0.7,
+        visible: false,
         renderer: {
           type: "simple",
           symbol: {
             type: "simple-marker",
             style: "triangle",
-            size: 10,
-            color: [0, 150, 255, 0.8],
-            outline: {
-              color: "white",
-              width: 1.5
-            }
+            size: 8,
+            color: [255, 215, 0, 0.8],
+            outline: { color: "white", width: 1 }
           },
           visualVariables: [{
             type: "rotation",
@@ -521,8 +591,8 @@
             field: "WIND_SPEED",
             minDataValue: 0,
             maxDataValue: 50,
-            minSize: 8,
-            maxSize: 24
+            minSize: 6,
+            maxSize: 18
           }]
         },
         popupTemplate: {
@@ -530,8 +600,8 @@
           content: `<div style="line-height:1.5">
             <b>🌬️ Wind Speed:</b> {WIND_SPEED} km/h<br>
             <b>🧭 Wind Direction:</b> {WIND_DIRECT}°<br>
-            <b>🌡️ Air Temperature:</b> {TEMP} °C<br>
-            <b>💧 Relative Humidity:</b> {R_HUMIDITY}%<br>
+            <b>🌡️ Temperature:</b> {TEMP} °C<br>
+            <b>💧 Humidity:</b> {R_HUMIDITY}%<br>
             <b>☁️ Cloud Coverage:</b> {COVERAGE}<br>
             <b>🌈 Visibility:</b> {VISIBILITY} km<br>
             <b>📍 Location:</b> {STATION_NAME}<br>
@@ -539,9 +609,9 @@
           </div>`
         }
       });
-      map.add(windLayer, 2);
+      map.add(weatherStationsLayer, 3);
 
-      // Add Fire Layer from NASA FIRMS - Direct WMS service
+      // Fire Layer
       fireLayer = new FeatureLayer({
         url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
         title: "Active Fires & Thermal Hotspots (VIIRS)",
@@ -567,14 +637,14 @@
             <b>📅 Detection Date:</b> {ACQ_DATE}<br>
             <b>🕐 Detection Time:</b> {ACQ_TIME}<br>
             <b>🛰️ Satellite:</b> {SATELLITE}<br>
-            <b>🔍 Confidence:</b> {CONFIDENCE}<br>
+            <b>📍 Confidence:</b> {CONFIDENCE}<br>
             <b>📍 Coordinates:</b> {LATITUDE}, {LONGITUDE}<br>
             <b>📊 Data Source:</b> NASA VIIRS
           </div>`
         },
-        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1" // Show only fires from last 24 hours
+        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1"
       });
-      map.add(fireLayer, 3);
+      map.add(fireLayer, 4);
 
       let legendWidget = null;
       function updateLegend() {
@@ -586,11 +656,14 @@
         if (googleAqiLayer && googleAqiLayer.visible) {
             layerInfos.push({ layer: googleAqiLayer, title: "Cities (Google AQI)" });
         }
+        if (windLayer && windLayer.visible) {
+            layerInfos.push({ layer: windLayer, title: "🌪️ Animated Wind Flow" });
+        }
+        if (weatherStationsLayer && weatherStationsLayer.visible) {
+            layerInfos.push({ layer: weatherStationsLayer, title: "🌡️ Weather Stations" });
+        }
         if (fireLayer && fireLayer.visible) {
             layerInfos.push({ layer: fireLayer, title: "Active Fires & Thermal Hotspots (VIIRS)" });
-        }
-        if (windLayer && windLayer.visible) {
-            layerInfos.push({ layer: windLayer, title: "Current Weather & Wind Stations" });
         }
         legendWidget.layerInfos = layerInfos;
       }
@@ -619,6 +692,7 @@
             } else {
                  statusParts.push(`❌ Google AQI failed to load.`);
             }
+            statusParts.push(`✓ Animated wind streamlines active`);
             document.getElementById("status").innerHTML = statusParts.join('<br>');
         }).catch(() => {
             document.getElementById("status").textContent = "⚠️ Could not connect to all data sources.";
@@ -684,12 +758,36 @@
         });
       });
 
+      // Layer controls
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerWind").addEventListener("change", e => { if (windLayer) windLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerWeatherStations").addEventListener("change", e => { if (weatherStationsLayer) weatherStationsLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
+
+      // Wind animation controls
+      document.getElementById("windSpeed").addEventListener("input", function() {
+        document.getElementById("speedValue").textContent = this.value;
+        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
+          windLayer.renderer.flowSpeed = parseInt(this.value);
+        }
+      });
+
+      document.getElementById("windDensity").addEventListener("input", function() {
+        document.getElementById("densityValue").textContent = this.value;
+        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
+          windLayer.renderer.density = parseFloat(this.value);
+        }
+      });
+
+      document.getElementById("windTrail").addEventListener("input", function() {
+        document.getElementById("trailValue").textContent = this.value;
+        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
+          windLayer.renderer.trailLength = parseInt(this.value);
+        }
+      });
 
       function performSearch(){
         const term = document.getElementById("searchInput").value.toLowerCase().trim();
@@ -699,7 +797,7 @@
           const match = googleAqiData.features.find(f => f.properties.name.toLowerCase().includes(term));
           if (match) {
             view.goTo({ center: match.geometry.coordinates, zoom: 12 }, { duration: 1500 });
-            toast(`📍 Found ${match.properties.name} in Google AQI data`);
+            toast(`🔍 Found ${match.properties.name} in Google AQI data`);
             return;
           }
         }
@@ -712,7 +810,7 @@
             if (result.features.length > 0) {
                 const feature = result.features[0];
                 view.goTo(feature.geometry);
-                toast(`📍 Found ${feature.attributes.CITY_NAME}`);
+                toast(`🔍 Found ${feature.attributes.CITY_NAME}`);
             } else {
                 toast("City not found in available data.", 2500);
             }
@@ -721,6 +819,52 @@
       document.getElementById("searchBtn").addEventListener("click", performSearch);
       document.getElementById("searchInput").addEventListener("keypress", e => { if(e.key === "Enter") performSearch(); });
     });
+
+    // Wind preset functions
+    function setWindPreset(preset) {
+      require(["esri/layers/ImageryTileLayer"], function() {
+        const windLayer = window.windLayer || Array.from(document.querySelectorAll('[data-layer="wind"]'))[0];
+        if (!windLayer || !windLayer.renderer || windLayer.renderer.type !== "flow") return;
+        
+        const renderer = windLayer.renderer;
+        
+        // Reset button styles
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        switch(preset) {
+          case 'subtle':
+            renderer.density = 0.3;
+            renderer.flowSpeed = 4;
+            renderer.trailLength = 100;
+            renderer.trailWidth = "1px";
+            break;
+          case 'normal':
+            renderer.density = 0.6;
+            renderer.flowSpeed = 8;
+            renderer.trailLength = 150;
+            renderer.trailWidth = "2px";
+            break;
+          case 'intense':
+            renderer.density = 0.9;
+            renderer.flowSpeed = 15;
+            renderer.trailLength = 200;
+            renderer.trailWidth = "3px";
+            break;
+        }
+        
+        // Update slider values
+        document.getElementById("windSpeed").value = renderer.flowSpeed;
+        document.getElementById("windDensity").value = renderer.density;
+        document.getElementById("windTrail").value = renderer.trailLength;
+        document.getElementById("speedValue").textContent = renderer.flowSpeed;
+        document.getElementById("densityValue").textContent = renderer.density;
+        document.getElementById("trailValue").textContent = renderer.trailLength;
+      });
+    }
+
+    // Make setWindPreset available globally
+    window.setWindPreset = setWindPreset;
 
     // Mascot and Chat Bubble Controller
     (function() {
