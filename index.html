@@ -1,172 +1,1793 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Global AQI Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    #map { height: 100vh; width: 100%; }
-    .chat-box {
-      display: none;
-      flex-direction: column;
-      position: fixed;
-      bottom: 120px;
-      right: 30px;
-      width: 320px;
-      max-height: 400px;
-      background: white;
-      border-radius: 1rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      overflow: hidden;
-      z-index: 1000;
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Global Air Quality Intelligence Platform</title>
+<link href="https://js.arcgis.com/4.29/esri/themes/light/main.css" rel="stylesheet"/>
+<script src="https://js.arcgis.com/4.29/"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --dark-surface: #1a1d29;
+        --darker-surface: #141721;
+        --light-surface: #242936;
+        --text-primary: #ffffff;
+        --text-secondary: #a0a9c0;
+        --text-muted: #6b7280;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --border-hover: rgba(255, 255, 255, 0.2);
+        --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
     }
-    .chat-header {
-      background: #2563eb;
-      color: white;
-      padding: 10px;
-      font-weight: 600;
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
-    .chat-messages {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-      font-size: 0.9rem;
+
+    html, body {
+        height: 100%;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--darker-surface);
+        overflow: hidden;
+        color: var(--text-primary);
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
-    .chat-input {
-      display: flex;
-      border-top: 1px solid #ddd;
+
+    /* Header - Premium Design */
+    .header {
+        background: var(--primary-gradient);
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 32px;
+        box-shadow: var(--shadow-lg);
+        z-index: 1001;
+        position: relative;
+        backdrop-filter: blur(20px);
     }
-    .chat-input input {
-      flex: 1;
-      border: none;
-      padding: 10px;
-      outline: none;
+
+    .header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        pointer-events: none;
     }
-    .chat-input button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      cursor: pointer;
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 24px;
     }
-  </style>
+
+    .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .logo-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header-text h1 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 2px;
+        letter-spacing: -0.5px;
+    }
+
+    .header-text h2 {
+        font-size: 14px;
+        opacity: 0.9;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .header-btn {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: var(--text-primary);
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: 500;
+        font-size: 14px;
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .header-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Main Layout */
+    #viewDiv {
+        position: absolute;
+        top: 80px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #viewDiv.sidebar-open {
+        left: 420px;
+    }
+
+    /* Sidebar - Glassmorphism Design */
+    .sidebar {
+        position: fixed;
+        top: 80px;
+        width: 420px;
+        height: calc(100vh - 80px);
+        background: linear-gradient(145deg, rgba(26, 29, 41, 0.95), rgba(20, 23, 33, 0.98));
+        backdrop-filter: blur(30px);
+        border-right: 1px solid var(--border-color);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        left: -420px;
+        transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    /* Tab Navigation - Modern Design */
+    .sidebar-tabs {
+        display: flex;
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid var(--border-color);
+        padding: 8px;
+        gap: 4px;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 14px 20px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--accent-gradient);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: -1;
+    }
+
+    .tab-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .tab-btn.active::before {
+        opacity: 1;
+    }
+
+    /* Sidebar Content */
+    .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+    }
+
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    /* Card-based Sections */
+    .section-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+
+    .section-card:hover {
+        border-color: var(--border-hover);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-gradient);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -0.3px;
+    }
+
+    /* Enhanced Search */
+    .search-container {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 16px 20px 16px 50px;
+        border: 2px solid transparent;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+        font-size: 14px;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+
+    .search-input::placeholder {
+        color: var(--text-secondary);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: rgba(79, 172, 254, 0.5);
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.1);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        font-size: 18px;
+    }
+
+    .search-btn {
+        width: 100%;
+        padding: 16px;
+        background: var(--accent-gradient);
+        border: none;
+        border-radius: var(--radius-md);
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 12px;
+        letter-spacing: 0.5px;
+    }
+
+    .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
+    }
+
+    /* Premium City Items */
+    .cities-container {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .city-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        margin-bottom: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .city-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .city-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .city-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 14px;
+    }
+
+    .city-details {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    /* Enhanced AQI Tags */
+    .tag {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .tag.good {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .tag.mod {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+    .tag.bad {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    /* Statistics Dashboard */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-2px);
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Enhanced Settings */
+    .settings-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    .basemap-option, .setting-option {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid transparent;
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .basemap-option:hover, .setting-option:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .basemap-option.active, .setting-option.active {
+        background: var(--accent-gradient);
+        border-color: rgba(79, 172, 254, 0.5);
+        color: white;
+        box-shadow: 0 4px 20px rgba(79, 172, 254, 0.3);
+    }
+
+    /* Flow Controls */
+    .flow-type-btn {
+        width: 100%;
+        padding: 16px 20px;
+        margin: 4px 0;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid transparent;
+        color: var(--text-primary);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: left;
+    }
+
+    .flow-type-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .flow-type-btn.active {
+        background: var(--accent-gradient);
+        border-color: rgba(79, 172, 254, 0.5);
+        color: white;
+        box-shadow: 0 4px 20px rgba(79, 172, 254, 0.3);
+    }
+
+    .flow-control {
+        margin: 16px 0;
+    }
+
+    .flow-control label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .flow-control input[type="range"] {
+        width: 100%;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        outline: none;
+    }
+
+    .flow-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: var(--accent-gradient);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .flow-control-value {
+        font-weight: bold;
+        color: #4facfe;
+    }
+
+    .preset-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .preset-btn {
+        flex: 1;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .preset-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .preset-btn.active {
+        background: var(--accent-gradient);
+        border-color: #4facfe;
+        color: white;
+    }
+
+    #flowInfo {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin: 16px 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+    }
+
+    #flowInfo strong {
+        color: #4facfe;
+    }
+
+    .notes {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+        padding: 0 4px;
+    }
+
+    .notes li {
+        margin-left: 18px;
+        margin-bottom: 6px;
+    }
+
+    #status {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+        padding: 4px;
+    }
+
+    /* Layer Controls */
+    .layer-control {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .layer-control:last-child {
+        border-bottom: none;
+    }
+
+    .layer-control label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .layer-control input {
+        width: 18px;
+        height: 18px;
+        accent-color: #4facfe;
+    }
+
+    /* Enhanced Loading States */
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        gap: 16px;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid #4facfe;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* Mascot and Chat Interface - Enhanced */
+    #mascotContainer {
+        position: fixed;
+        z-index: 2000;
+        left: calc(100% - 120px);
+        top: calc(100% - 140px);
+        user-select: none;
+    }
+
+    #mascotBtn {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: move;
+        display: block;
+        transition: transform 0.3s ease;
+        filter: drop-shadow(0 8px 25px rgba(0, 0, 0, 0.3));
+    }
+
+    #mascotBtn:hover {
+        transform: scale(1.05);
+    }
+
+    #mascotBtn.dragging {
+        cursor: grabbing;
+        transform: scale(1.1);
+    }
+
+    #mascotBtn img {
+        width: 84px;
+        height: 84px;
+        display: block;
+    }
+
+    #chatBubble {
+        position: absolute;
+        display: flex;
+        width: 420px;
+        height: 520px;
+        background: linear-gradient(145deg, rgba(26, 29, 41, 0.98), rgba(20, 23, 33, 0.98));
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        overflow: hidden;
+        backdrop-filter: blur(30px);
+        transform: scale(0.95);
+        opacity: 0;
+        transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        pointer-events: none;
+    }
+
+    #chatBubble.open {
+        display: flex;
+        transform: scale(1);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #chatBubble.left {
+        right: 100px;
+        top: -240px;
+    }
+
+    #chatBubble.left::after {
+        content: "";
+        position: absolute;
+        right: -12px;
+        top: 230px;
+        width: 0;
+        height: 0;
+        border: 12px solid transparent;
+        border-left-color: rgba(26, 29, 41, 0.98);
+    }
+
+    #chatBubble.right {
+        left: 100px;
+        top: -240px;
+    }
+
+    #chatBubble.right::after {
+        content: "";
+        position: absolute;
+        left: -12px;
+        top: 230px;
+        width: 0;
+        height: 0;
+        border: 12px solid transparent;
+        border-right-color: rgba(26, 29, 41, 0.98);
+    }
+
+    #chatInterface {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+    }
+
+    #chatHeader {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 20px 24px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        font-size: 16px;
+    }
+
+    #closeChat {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+        transition: background 0.2s;
+    }
+
+    #closeChat:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    #chatMessages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .message {
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        max-width: 85%;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .message.user {
+        align-self: flex-end;
+        background: var(--accent-gradient);
+        color: white;
+    }
+
+    .message.bot {
+        align-self: flex-start;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+
+    #chatInputArea {
+        display: flex;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.2);
+        border-top: 1px solid var(--border-color);
+        gap: 12px;
+    }
+
+    #chatInput {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    #chatInput::placeholder {
+        color: var(--text-secondary);
+    }
+
+    #chatInput:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #4facfe;
+    }
+
+    #chatSend {
+        padding: 12px 20px;
+        border: none;
+        background: var(--accent-gradient);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+    }
+
+    #chatSend:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+    }
+
+    #chatSend:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Enhanced Scrollbars */
+    .sidebar-content::-webkit-scrollbar,
+    .cities-container::-webkit-scrollbar,
+    #chatMessages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar-content::-webkit-scrollbar-track,
+    .cities-container::-webkit-scrollbar-track,
+    #chatMessages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sidebar-content::-webkit-scrollbar-thumb,
+    .cities-container::-webkit-scrollbar-thumb,
+    #chatMessages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .sidebar-content::-webkit-scrollbar-thumb:hover,
+    .cities-container::-webkit-scrollbar-thumb:hover,
+    #chatMessages::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Map Overlays */
+    #loading {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: #667eea;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    #overlayStatus {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        z-index: 1002;
+        background: linear-gradient(145deg, rgba(26, 29, 41, 0.95), rgba(20, 23, 33, 0.95));
+        backdrop-filter: blur(20px);
+        color: var(--text-primary);
+        padding: 16px 24px;
+        border-radius: var(--radius-lg);
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-lg);
+        display: none;
+        max-width: 300px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 100vw;
+            left: -100vw;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        #viewDiv.sidebar-open {
+            left: 0;
+        }
+
+        .header {
+            padding: 0 16px;
+            height: 70px;
+        }
+
+        .header-text h1 {
+            font-size: 18px;
+        }
+
+        .header-text h2 {
+            font-size: 12px;
+        }
+
+        #chatBubble {
+            width: calc(100vw - 32px);
+            height: calc(100vh - 120px);
+            bottom: 16px;
+            right: 16px;
+            position: fixed;
+            top: auto !important;
+            left: 16px !important;
+        }
+
+        #chatBubble.left, #chatBubble.right {
+            right: 16px;
+            left: 16px;
+            top: auto;
+            bottom: 16px;
+        }
+
+        #chatBubble::after {
+            display: none;
+        }
+    }
+
+    /* Custom Map Styling */
+    .esri-legend {
+        background: linear-gradient(145deg, rgba(26, 29, 41, 0.95), rgba(20, 23, 33, 0.95)) !important;
+        backdrop-filter: blur(20px) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-lg) !important;
+        box-shadow: var(--shadow-lg) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .esri-legend__service-label,
+    .esri-legend__layer-caption {
+        color: var(--text-primary) !important;
+    }
+</style>
 </head>
-<body class="bg-gray-100">
+<body>
 
-  <!-- Header -->
-  <header class="bg-white shadow flex justify-between items-center px-6 py-4">
-    <div class="flex items-center space-x-3">
-      <img src="mascot.png" alt="AQI Mascot Logo" class="w-10 h-10 rounded-full" />
-      <div>
-        <h1 class="text-xl font-bold text-gray-800">Global AQI Dashboard</h1>
-        <p class="text-sm text-gray-500">Air Quality Monitoring in Real Time</p>
-      </div>
+<div class="header">
+    <div class="header-left">
+        <button class="header-btn" id="sidebarBtn" title="Toggle Control Panel">
+            <span>☰</span>
+            <span>Controls</span>
+        </button>
+        <div class="logo-section">
+            <div class="logo-icon">🌍</div>
+            <div class="header-text">
+                <h1>Global Air Quality Intelligence Platform</h1>
+                <h2>AI-Driven Environmental Monitoring for a Green Economy</h2>
+            </div>
+        </div>
     </div>
-    <input type="text" id="global-search" placeholder="Search city or location..."
-      class="border rounded-lg px-3 py-2 w-64 focus:outline-none focus:ring focus:ring-blue-300" />
-  </header>
-
-  <!-- Sidebar + Map -->
-  <div class="flex">
-    <!-- Sidebar -->
-    <aside class="w-80 bg-white border-r h-[calc(100vh-64px)] overflow-y-auto p-4 space-y-6">
-      <!-- KPI Cards -->
-      <div class="grid grid-cols-1 gap-4">
-        <div class="bg-gradient-to-r from-green-400 to-green-600 text-white p-4 rounded-xl shadow">
-          <p class="text-sm">Global Avg AQI</p>
-          <h2 class="text-2xl font-bold">72</h2>
+    <div class="header-actions">
+        <div class="header-btn">
+            <div class="status-indicator"></div>
+            <span>Live Data</span>
         </div>
-        <div class="bg-gradient-to-r from-red-400 to-red-600 text-white p-4 rounded-xl shadow">
-          <p class="text-sm">Hazardous Cities</p>
-          <h2 class="text-2xl font-bold">14</h2>
-        </div>
-        <div class="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-xl shadow">
-          <p class="text-sm">Good AQI %</p>
-          <h2 class="text-2xl font-bold">65%</h2>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div>
-        <h3 class="font-semibold text-gray-700 mb-2">Data Panels</h3>
-        <div class="space-y-3">
-          <div class="bg-gray-50 rounded-lg shadow p-3">
-            <h4 class="font-bold text-gray-800">Most Polluted Cities</h4>
-            <ul id="polluted-list" class="mt-2 text-sm space-y-1 text-gray-700">
-              <li>Delhi — AQI 320</li>
-              <li>Jakarta — AQI 290</li>
-              <li>Beijing — AQI 280</li>
-            </ul>
-          </div>
-          <div class="bg-gray-50 rounded-lg shadow p-3">
-            <h4 class="font-bold text-gray-800">Google AQI Cities</h4>
-            <ul id="google-list" class="mt-2 text-sm space-y-1 text-gray-700">
-              <li>Singapore — AQI 42</li>
-              <li>Tokyo — AQI 55</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Map -->
-    <main class="flex-1">
-      <div id="map"></div>
-    </main>
-  </div>
-
-  <!-- Mascot Floating Button -->
-  <div id="mascot-button" class="fixed bottom-6 right-6 cursor-pointer">
-    <img src="mascot.png" 
-         alt="Mascot" 
-         class="w-24 h-24 rounded-full shadow-lg border-2 border-white hover:scale-110 transition-transform" />
-  </div>
-
-  <!-- Chat Box -->
-  <div id="chat-box" class="chat-box">
-    <div class="chat-header">AQI Assistant</div>
-    <div id="chat-messages" class="chat-messages"></div>
-    <div class="chat-input">
-      <input type="text" id="chat-input-field" placeholder="Ask me about air quality..." />
-      <button id="chat-send">Send</button>
     </div>
-  </div>
+</div>
 
-  <!-- Scripts -->
-  <script>
-    // Leaflet map
-    const map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="data">📊 Data Explorer</button>
+        <button class="tab-btn" data-tab="settings">⚙️ Configuration</button>
+    </div>
+    
+    <div class="sidebar-content">
+        <div class="tab-panel active" id="dataPanel">
+            <!-- Global Search Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🔍</div>
+                    <div class="section-title">Location Intelligence</div>
+                </div>
+                <div class="search-container">
+                    <div class="search-icon">🔍</div>
+                    <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." />
+                </div>
+                <button class="search-btn" id="searchBtn">Analyze Location</button>
+            </div>
 
-    // Mascot chat toggle
-    const mascotButton = document.getElementById('mascot-button');
-    const chatBox = document.getElementById('chat-box');
-    mascotButton.addEventListener('click', () => {
-      chatBox.style.display = chatBox.style.display === 'flex' ? 'none' : 'flex';
+            <!-- Most Polluted Cities -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🏭</div>
+                    <div class="section-title">Critical Air Quality Zones</div>
+                </div>
+                <div class="cities-container" id="topCities">
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading critical zones...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google AQI Cities -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🌍</div>
+                    <div class="section-title">Google AQI Network</div>
+                </div>
+                <div class="cities-container" id="googleAqiList">
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Connecting to Google AQI...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Sources & Notes -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">📈</div>
+                    <div class="section-title">Data Sources</div>
+                </div>
+                <ul class="notes">
+                    <li>Live stations: OpenAQ via Esri Living Atlas</li>
+                    <li>World cities: Major cities worldwide</li>
+                    <li>Regional AQI: Google Air Quality API</li>
+                    <li>Wind data: NLDAS Hurricane Ida (animated)</li>
+                    <li>Ocean currents: Global ocean circulation (animated)</li>
+                    <li>Fire data: NASA VIIRS thermal hotspots (24hr)</li>
+                </ul>
+                
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">System Status</div>
+                    <div id="status">Initializing connections...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="settingsPanel">
+            <!-- Map Styles -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🗺️</div>
+                    <div class="section-title">Map Visualization</div>
+                </div>
+                <div class="settings-grid">
+                    <div class="basemap-option active" data-basemap="satellite">Satellite Imagery</div>
+                    <div class="basemap-option" data-basemap="streets">Street Map</div>
+                    <div class="basemap-option" data-basemap="hybrid">Hybrid View</div>
+                    <div class="basemap-option" data-basemap="terrain">Terrain</div>
+                    <div class="basemap-option" data-basemap="dark-gray">Dark Theme</div>
+                    <div class="basemap-option" data-basemap="topo">Topographic</div>
+                    <div class="basemap-option" data-basemap="gray">Light Gray</div>
+                    <div class="basemap-option" data-basemap="oceans">Ocean View</div>
+                </div>
+            </div>
+
+            <!-- Data Layers -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">📊</div>
+                    <div class="section-title">Data Layer Controls</div>
+                </div>
+                <div class="layer-control">
+                    <label><span>PM2.5 Stations (OpenAQ)</span></label>
+                    <input checked type="checkbox" id="layerAQI"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>Cities (Google AQI)</span></label>
+                    <input checked type="checkbox" id="layerGoogleAQI"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>🌊 Flow Animation (Active)</span></label>
+                    <input checked type="checkbox" id="layerFlow"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>🌡️ Weather Stations</span></label>
+                    <input type="checkbox" id="layerWeatherStations"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>🔥 Active Fire Hotspots</span></label>
+                    <input checked type="checkbox" id="layerFire"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>World Cities</span></label>
+                    <input checked type="checkbox" id="layerCities"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>Legend</span></label>
+                    <input checked type="checkbox" id="layerLegend"/>
+                </div>
+            </div>
+
+            <!-- Flow Animation Type -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🌊</div>
+                    <div class="section-title">Flow Animation Type</div>
+                </div>
+                <button class="flow-type-btn active" onclick="switchFlowType('ocean')" data-type="ocean">🌊 Global Ocean Currents</button>
+                <button class="flow-type-btn" onclick="switchFlowType('wind-na')" data-type="wind-na">🌪️ North America Wind</button>
+                <button class="flow-type-btn" onclick="switchFlowType('wind-global')" data-type="wind-global">🌬️ Global Wind Field</button>
+                <div id="flowInfo">
+                    <strong>🌊 Global Ocean Currents:</strong><br>• Worldwide coverage<br>• Shows global ocean circulation<br>• Real ocean current patterns
+                </div>
+            </div>
+
+            <!-- Flow Animation Settings -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon">🎮</div>
+                    <div class="section-title">Animation Settings</div>
+                </div>
+                <div class="flow-control">
+                    <label>Flow Speed: <span class="flow-control-value" id="speedValue">6</span></label>
+                    <input type="range" id="windSpeed" min="1" max="20" value="6">
+                </div>
+                <div class="flow-control">
+                    <label>Density: <span class="flow-control-value" id="densityValue">0.7</span></label>
+                    <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7">
+                </div>
+                <div class="flow-control">
+                    <label>Trail Length: <span class="flow-control-value" id="trailValue">120</span></label>
+                    <input type="range" id="windTrail" min="50" max="300" value="120">
+                </div>
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setWindPreset('subtle')">Subtle</button>
+                    <button class="preset-btn active" onclick="setWindPreset('normal')">Normal</button>
+                    <button class="preset-btn" onclick="setWindPreset('intense')">Intense</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<div id="viewDiv">
+    <div id="loading">Loading map...</div>
+    <div id="overlayStatus"></div>
+</div>
+
+<div id="mascotContainer">
+    <button id="mascotBtn" title="Click to chat with AQI Assistant">
+        <img src="https://i.imgur.com/zpwE5f8.png" alt="AQI Warrior mascot" />
+    </button>
+    <div id="chatBubble" class="left">
+        <div id="chatInterface">
+            <div id="chatHeader">
+                <span>🌍 AQI Assistant</span>
+                <button id="closeChat" title="Close chat">×</button>
+            </div>
+            <div id="chatMessages">
+                <div class="message bot">Hi! I'm your AQI Assistant. Ask me about air quality anywhere in the world. Try: "What's the PM2.5 in Beijing?" or "Show me the most polluted cities."</div>
+            </div>
+            <div id="chatInputArea">
+                <input id="chatInput" type="text" placeholder="Ask about air quality..." />
+                <button id="chatSend">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    require([
+      "esri/Map","esri/views/MapView",
+      "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
+      "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
+      "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
+      "esri/widgets/Legend","esri/config"
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
+
+      let googleAqiLayer = null;
+      let googleAqiData = null;
+      let windLayer = null;
+      let weatherStationsLayer = null;
+      let fireLayer = null;
+      
+      const map = new Map({ basemap: "satellite" });
+      const view = new MapView({
+        container: "viewDiv",
+        map, center: [105, 35], zoom: 4,
+        popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
+      });
+
+      function switchFlowType(type) {
+        globalOceanCurrentsLayer.visible = false;
+        northAmericaWindLayer.visible = false;
+        globalWindLayer.visible = false;
+        
+        document.querySelectorAll('.flow-type-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.flow-type-btn[data-type="${type}"]`).classList.add('active');
+        
+        switch(type) {
+            case 'ocean':
+                window.currentFlowLayer = globalOceanCurrentsLayer;
+                updateFlowInfo('ocean');
+                break;
+            case 'wind-na':
+                window.currentFlowLayer = northAmericaWindLayer;
+                updateFlowInfo('wind-na');
+                break;
+            case 'wind-global':
+                window.currentFlowLayer = globalWindLayer;
+                updateFlowInfo('wind-global');
+                break;
+        }
+        window.currentFlowLayer.visible = document.getElementById('layerFlow').checked;
+        windLayer = window.currentFlowLayer;
+        updateLegend();
+      }
+
+      function updateFlowInfo(type) {
+        const infoDiv = document.getElementById('flowInfo');
+        const content = {
+            'ocean': `<strong>🌊 Global Ocean Currents:</strong><br>• Worldwide coverage<br>• Shows global ocean circulation<br>• Real ocean current patterns`,
+            'wind-na': `<strong>🌪️ North America Wind:</strong><br>• Hurricane Ida data (Aug 2021)<br>• High-resolution wind patterns<br>• Dramatic storm visualization`,
+            'wind-global': `<strong>🌬️ Global Wind Field:</strong><br>• NDFD wind forecast data<br>• Limited global coverage<br>• Atmospheric wind patterns`
+        };
+        infoDiv.innerHTML = content[type] || '';
+      }
+
+      window.switchFlowType = switchFlowType;
+      window.updateFlowInfo = updateFlowInfo;
+
+      try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
+
+      const toast = (msg, ms = 2200) => {
+        const el = document.getElementById("overlayStatus");
+        el.textContent = msg;
+        el.style.display = "block";
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.style.display = "none", ms);
+      };
+
+      function createGoogleAqiLayer(geoJsonData) {
+        const blob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        return new GeoJSONLayer({
+          url: url,
+          title: "Cities (Google AQI)",
+          copyright: "© Google Air Quality API - Live Data",
+          renderer: {
+            type: "class-breaks",
+            field: "aqi",
+            classBreakInfos: [
+              { minValue: 0, maxValue: 50, symbol: { type: "simple-marker", style: "triangle", size: 12, color: "#00e400", outline: { color: "#fff", width: 1.5 } }, label: "Good (0–50)" },
+              { minValue: 51, maxValue: 100, symbol: { type: "simple-marker", style: "triangle", size: 14, color: "#ffff00", outline: { color: "#fff", width: 1.5 } }, label: "Moderate (51–100)" },
+              { minValue: 101, maxValue: 150, symbol: { type: "simple-marker", style: "triangle", size: 16, color: "#ff7e00", outline: { color: "#fff", width: 1.5 } }, label: "Unhealthy for Sensitive (101–150)" },
+              { minValue: 151, maxValue: 200, symbol: { type: "simple-marker", style: "triangle", size: 18, color: "#ff0000", outline: { color: "#fff", width: 1.5 } }, label: "Unhealthy (151–200)" },
+              { minValue: 201, maxValue: 300, symbol: { type: "simple-marker", style: "triangle", size: 20, color: "#8f3f97", outline: { color: "#fff", width: 1.5 } }, label: "Very Unhealthy (201–300)" },
+              { minValue: 301, maxValue: 9999, symbol: { type: "simple-marker", style: "triangle", size: 22, color: "#7e0023", outline: { color: "#fff", width: 1.5 } }, label: "Hazardous (300+)" }
+            ]
+          },
+          popupTemplate: {
+            title: "{name} - Google AQI",
+            content: `<div style="line-height:1.5"><b>🌬️ US AQI:</b> <span style="font-size:18px;font-weight:bold;">{aqi}</span><br><b>📊 Category:</b> {category}<br><b>💨 Dominant Pollutant:</b> {main_pollutant}<br><b>🕒 Last Updated:</b> {time}<br><b>📍 Location:</b> {name}<br><b>📊 Data Source:</b> {source}</div>`
+          }
+        });
+      }
+
+      async function loadGoogleAqiData() {
+        try {
+          toast("Loading Google AQI data...", 3000);
+          const response = await fetch('/.netlify/functions/google-aqi');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          googleAqiData = await response.json();
+          if (googleAqiData.warning) console.warn("API Warning:", googleAqiData.warning);
+          googleAqiLayer = createGoogleAqiLayer(googleAqiData);
+          map.add(googleAqiLayer, 1);
+          await googleAqiLayer.load();
+          toast("✅ Google AQI data loaded!");
+          updateStatus();
+          updateLegend();
+          updateGoogleAqiList(googleAqiData);
+        } catch (error) {
+          console.error("Failed to load Google AQI data:", error);
+          toast("❌ Failed to load Google AQI data");
+          document.getElementById("googleAqiList").innerHTML = `<div style="opacity:.85; color: #ffdddd; padding: 10px;">Failed to load.</div>`;
+          updateStatus();
+        }
+      }
+      
+      function updateGoogleAqiList(geoJsonData) {
+          const listElement = document.getElementById("googleAqiList");
+          if (!geoJsonData || !geoJsonData.features || geoJsonData.features.length === 0) {
+              listElement.innerHTML = '<div style="opacity:.85; padding: 10px;">No data available</div>';
+              return;
+          }
+          const cities = geoJsonData.features.map(f => f.properties).sort((a, b) => b.aqi - a.aqi);
+          const getAqiClass = aqi => aqi <= 50 ? "good" : aqi <= 100 ? "mod" : "bad";
+          listElement.innerHTML = "";
+          cities.forEach(city => {
+              const row = document.createElement("div");
+              row.className = "city-item";
+              row.innerHTML = `
+                  <div class="city-info">
+                      <div class="city-name">${city.name}</div>
+                      <div class="city-details">Google AQI Data</div>
+                  </div>
+                  <span class="tag ${getAqiClass(city.aqi)}">${city.aqi}</span>
+              `;
+              row.addEventListener("click", () => {
+                  const feature = geoJsonData.features.find(f => f.properties.name === city.name);
+                  if (feature) view.goTo({ center: feature.geometry.coordinates, zoom: 11 }, { duration: 1500 });
+              });
+              listElement.appendChild(row);
+          });
+      }
+
+      const pm25Layer = new FeatureLayer({
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
+        title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
+        popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5"><b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br><b>Updated:</b> {lastUpdated}<br><a href="{url}" target="_blank" rel="noopener">Station link</a></div>` },
+        renderer:{ type:"class-breaks", field:"value", classBreakInfos:[
+          {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:"#fff",width:1}},label:"Good (0–10)"},
+          {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:10,color:"#ffff00",outline:{color:"#fff",width:1}},label:"Moderate (10–25)"},
+          {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:12,color:"#ff7e00",outline:{color:"#fff",width:1}},label:"USG (25–50)"},
+          {minValue:50.1,maxValue:75,symbol:{type:"simple-marker",size:14,color:"#ff0000",outline:{color:"#fff",width:1}},label:"Unhealthy (50–75)"},
+          {minValue:75.1,maxValue:100,symbol:{type:"simple-marker",size:16,color:"#8f3f97",outline:{color:"#fff",width:1}},label:"Very Unhealthy (75–100)"},
+          {minValue:100.1,maxValue:9999,symbol:{type:"simple-marker",size:18,color:"#7e0023",outline:{color:"#fff",width:1}},label:"Hazardous (100+)"}
+        ]}
+      });
+      map.add(pm25Layer);
+
+      const citiesLayer = new FeatureLayer({
+        url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
+        title:"World Cities", definitionExpression:"POP > 100000",
+        renderer:{ type:"simple", symbol:{ type:"simple-marker", size:3, color:[255,255,255,0.4], outline:{ width:.5, color:[0,0,0,.2] } } },
+        labelingInfo:[{ symbol:{ type:"text", color:"white", haloColor:"black", haloSize:.5, font:{ family:"Arial", size:8 } },
+          labelPlacement:"above-center", labelExpressionInfo:{ expression:"$feature.CITY_NAME" }, minScale:10000000 }],
+        popupTemplate:{ title:"{CITY_NAME}, {CNTRY_NAME}", content:"Population: {POP:NumberFormat}" }
+      });
+      map.add(citiesLayer);
+
+      const globalOceanCurrentsLayer = new ImageryTileLayer({
+        url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
+        title:"Global Ocean Currents", opacity:0.8, visible:true,
+        renderer: new FlowRenderer({
+          type:"flow", density:0.7, flowSpeed:6, trailLength:120, trailWidth:"2px", maxPathLength:180,
+          visualVariables:[{ type:"color", field:"Magnitude", stops:[
+            {color:[30,100,150,0.6],value:0},{color:[50,150,200,0.7],value:0.1},{color:[100,200,255,0.8],value:0.3},
+            {color:[150,255,200,0.9],value:0.6},{color:[255,255,100,1],value:1},{color:[255,100,100,1],value:1.5}
+          ]}]
+        }),
+        popupTemplate:{ title:"🌊 Global Ocean Currents", content:`<div style="line-height:1.5"><b>🌊 Current Speed:</b> {Magnitude} m/s<br><b>🧭 Current Direction:</b> {Direction}°<br><b>📊 Data Source:</b> Global Ocean Current Model<br><b>🌍 Coverage:</b> Worldwide Ocean Currents</div>` }
+      });
+
+      const northAmericaWindLayer = new ImageryTileLayer({
+        url:"https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
+        title:"North America Wind Flow", opacity:0.85, visible:false,
+        renderer: new FlowRenderer({
+          type:"flow", density:0.6, flowSpeed:8, trailLength:150, trailWidth:"2px", maxPathLength:200,
+          visualVariables:[{ type:"color", field:"Magnitude", stops:[
+            {color:[65,150,255,0.7],value:0},{color:[100,200,255,0.8],value:3},{color:[150,255,150,0.9],value:8},
+            {color:[255,255,100,0.9],value:15},{color:[255,150,50,1],value:25},{color:[255,50,50,1],value:35}
+          ]}]
+        }),
+        popupTemplate:{ title:"🌪️ Hurricane Ida Wind Data", content:`<div style="line-height:1.5"><b>💨 Wind Speed:</b> {Magnitude} m/s<br><b>🧭 Wind Direction:</b> {Direction}°<br><b>📊 Data Source:</b> NLDAS Hourly Wind Data<br><b>🕒 Time Period:</b> Hurricane Ida (Aug 30, 2021)</div>` }
+      });
+
+      const globalWindLayer = new ImageryTileLayer({
+        url:"https://sampleserver6.arcgisonline.com/arcgis/rest/services/ScientificData/NDFD_wind/ImageServer",
+        title:"Global Wind Field", opacity:0.8, visible:false,
+        renderer: new FlowRenderer({
+          type:"flow", density:0.5, flowSpeed:5, trailLength:100, trailWidth:"1.5px", maxPathLength:150,
+          visualVariables:[{ type:"color", field:"Magnitude", stops:[
+            {color:[100,200,100,0.7],value:0},{color:[150,255,150,0.8],value:5},{color:[255,255,100,0.9],value:15},
+            {color:[255,150,50,1],value:25},{color:[255,50,50,1],value:35}
+          ]}]
+        }),
+        popupTemplate:{ title:"🌬️ Wind Field Data", content:`<div style="line-height:1.5"><b>💨 Wind Speed:</b> {Magnitude} knots<br><b>🧭 Wind Direction:</b> {Direction}°<br><b>📊 Data Source:</b> NDFD Wind Data</div>` }
+      });
+
+      map.add(globalOceanCurrentsLayer, 2);
+      map.add(northAmericaWindLayer, 2);
+      map.add(globalWindLayer, 2);
+
+      windLayer = globalOceanCurrentsLayer;
+      window.currentFlowLayer = globalOceanCurrentsLayer;
+
+      weatherStationsLayer = new FeatureLayer({
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
+        title:"Weather Stations", opacity:0.7, visible:false,
+        renderer:{ type:"simple", symbol:{ type:"simple-marker", style:"triangle", size:8, color:[255,215,0,0.8], outline:{color:"white",width:1}}, visualVariables:[{type:"rotation",field:"WIND_DIRECT",rotationType:"geographic"},{type:"size",field:"WIND_SPEED",minDataValue:0,maxDataValue:50,minSize:6,maxSize:18}] },
+        popupTemplate:{ title:"🌡️ Weather Station: {STATION_NAME}", content:`<div style="line-height:1.5"><b>🌬️ Wind Speed:</b> {WIND_SPEED} km/h<br><b>🧭 Wind Direction:</b> {WIND_DIRECT}°<br><b>🌡️ Temperature:</b> {TEMP} °C<br><b>💧 Humidity:</b> {R_HUMIDITY}%<br><b>☁️ Cloud Coverage:</b> {COVERAGE}<br><b>🌈 Visibility:</b> {VISIBILITY} km<br><b>📍 Location:</b> {STATION_NAME}<br><b>🕒 Observation Time:</b> {DATE_TIME}</div>` }
+      });
+      map.add(weatherStationsLayer, 3);
+
+      fireLayer = new FeatureLayer({
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
+        title:"Active Fires & Thermal Hotspots (VIIRS)", opacity:0.9, visible:true,
+        renderer:{ type:"simple", symbol:{ type:"simple-marker", style:"circle", size:8, color:[255,69,0,0.8], outline:{color:"yellow",width:1}}},
+        popupTemplate:{ title:"🔥 Active Fire Detection", content:`<div style="line-height:1.5"><b>🔥 Fire Brightness:</b> {BRIGHT_TI4} K<br><b>📅 Detection Date:</b> {ACQ_DATE}<br><b>🕐 Detection Time:</b> {ACQ_TIME}<br><b>🛰️ Satellite:</b> {SATELLITE}<br><b>📍 Confidence:</b> {CONFIDENCE}<br><b>📍 Coordinates:</b> {LATITUDE}, {LONGITUDE}<br><b>📊 Data Source:</b> NASA VIIRS</div>` },
+        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1"
+      });
+      map.add(fireLayer, 4);
+
+      let legendWidget = null;
+      function updateLegend() {
+        if (!legendWidget) return;
+        const layerInfos = [];
+        if (pm25Layer && pm25Layer.visible) layerInfos.push({ layer:pm25Layer, title:"PM2.5 (μg/m³) – Live Stations" });
+        if (googleAqiLayer && googleAqiLayer.visible) layerInfos.push({ layer:googleAqiLayer, title:"Cities (Google AQI)" });
+        if (window.currentFlowLayer && window.currentFlowLayer.visible) layerInfos.push({ layer:window.currentFlowLayer, title:"🌊 Animated Flow" });
+        if (weatherStationsLayer && weatherStationsLayer.visible) layerInfos.push({ layer:weatherStationsLayer, title:"🌡️ Weather Stations" });
+        if (fireLayer && fireLayer.visible) layerInfos.push({ layer:fireLayer, title:"Active Fires & Thermal Hotspots (VIIRS)" });
+        legendWidget.layerInfos = layerInfos;
+      }
+
+      view.whenLayerView(pm25Layer).then(() => {
+        legendWidget = new Legend({ view, layerInfos:[] });
+        view.ui.add(legendWidget, "bottom-left");
+        document.getElementById("loading").style.display = "none";
+        loadGoogleAqiData();
+        updateStatus();
+        updateLegend();
+        refreshTopCities();
+        setInterval(refreshTopCities, 30 * 60 * 1000);
+      });
+
+      function updateStatus() {
+        pm25Layer.queryFeatureCount().then(c => {
+            const statusParts = [ `✓ PM2.5 stations connected (${c.toLocaleString()})` ];
+            if (googleAqiLayer && googleAqiLayer.loaded) {
+                statusParts.push(`✓ Google AQI active (${googleAqiData?.features.length || 0} cities)`);
+            } else {
+                statusParts.push(googleAqiLayer ? `... Google AQI loading...` : `❌ Google AQI failed to load.`);
+            }
+            statusParts.push(`✓ Animated flow streamlines active`);
+            document.getElementById("status").innerHTML = statusParts.join('<br>');
+        }).catch(() => {
+            document.getElementById("status").textContent = "⚠️ Could not connect to all data sources.";
+        });
+      }
+
+      async function refreshTopCities(){
+        const box=document.getElementById("topCities"); 
+        box.innerHTML='<div class="loading-container"><div class="loading-spinner"></div><div class="loading-text">Updating...</div></div>';
+        try{
+          const q=pm25Layer.createQuery();
+          q.where="value BETWEEN 0 AND 500 AND city IS NOT NULL AND unit IN ('µg/m³','ug/m3')";
+          q.groupByFieldsForStatistics=["city","country_name"];
+          q.outStatistics=[{statisticType:"avg",onStatisticField:"value",outStatisticFieldName:"avg_pm25"}, {statisticType:"count",onStatisticField:"value",outStatisticFieldName:"n_stations"}];
+          q.havingClause="COUNT(value) >= 3"; q.orderByFields=["avg_pm25 DESC"]; q.num=10; q.returnGeometry=false;
+          const res = await pm25Layer.queryFeatures(q);
+          if(!res.features.length){ 
+            box.innerHTML='<div style="opacity:.85; padding: 10px;">No data right now.</div>'; 
+            return; 
+          }
+          const getAqiClass = v => v <= 10 ? "good" : v <= 25 ? "mod" : "bad";
+          box.innerHTML = "";
+          res.features.forEach(f=>{
+            const a=f.attributes, v=a.avg_pm25;
+            const row=document.createElement("div");
+            row.className="city-item";
+            row.innerHTML=`
+                <div class="city-info">
+                    <div class="city-name">${a.city}, ${a.country_name}</div>
+                    <div class="city-details">Avg of ${a.n_stations} stations</div>
+                </div>
+                <span class="tag ${getAqiClass(v)}">${Math.round(v)}</span>
+            `;
+            row.addEventListener("click",()=>zoomToCity(a.city,a.country_name));
+            box.appendChild(row);
+          });
+        }catch(e){ 
+          console.error(e); 
+          box.innerHTML='<div style="opacity:.85; padding: 10px; color: #ffdddd;">Failed to load top cities.</div>'; 
+        }
+      }
+
+      async function zoomToCity(city,country){
+        const q = pm25Layer.createQuery();
+        const esc = s => String(s).replace(/'/g,"''");
+        q.where=`city='${esc(city)}' AND country_name='${esc(country)}' AND value BETWEEN 0 AND 500`;
+        q.outFields=["*"]; q.returnGeometry=true; q.num=1;
+        const res = await pm25Layer.queryFeatures(q);
+        if(res.features.length) view.goTo({ center: res.features[0].geometry, zoom:11 }, { duration:1500 });
+      }
+      window.zoomToCity = zoomToCity;
+
+      // Sidebar and Tab Management
+      document.getElementById("sidebarBtn").addEventListener("click", () => {
+        const sidebar = document.getElementById("sidebar");
+        const viewDiv = document.getElementById("viewDiv");
+        const isOpen = sidebar.classList.toggle("open");
+        viewDiv.classList.toggle("sidebar-open", isOpen);
+        setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
+      });
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          this.classList.add('active');
+          document.getElementById(this.dataset.tab + 'Panel').classList.add('active');
+        });
+      });
+      
+      document.querySelectorAll(".basemap-option").forEach(opt=>{
+        opt.addEventListener("click", function(){
+          map.basemap = this.dataset.basemap;
+          document.querySelectorAll(".basemap-option").forEach(o=>o.classList.remove("active"));
+          this.classList.add("active");
+        });
+      });
+
+      // Layer controls
+      document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerFlow").addEventListener("change", e => { if (window.currentFlowLayer) window.currentFlowLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerWeatherStations").addEventListener("change", e => { if (weatherStationsLayer) weatherStationsLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
+      document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
+
+      // Flow animation controls
+      const setupFlowControl = (inputId, valueId, property) => {
+          const input = document.getElementById(inputId);
+          const valueDisplay = document.getElementById(valueId);
+          input.addEventListener("input", function() {
+              const value = this.type === 'range' && this.step === '0.1' ? parseFloat(this.value) : parseInt(this.value);
+              valueDisplay.textContent = value;
+              if (window.currentFlowLayer?.renderer?.type === "flow") {
+                  window.currentFlowLayer.renderer[property] = value;
+              }
+          });
+      };
+      setupFlowControl("windSpeed", "speedValue", "flowSpeed");
+      setupFlowControl("windDensity", "densityValue", "density");
+      setupFlowControl("windTrail", "trailValue", "trailLength");
+
+      function performSearch(){
+        const term = document.getElementById("searchInput").value.toLowerCase().trim();
+        if (!term) return;
+        
+        if (googleAqiData?.features) {
+          const match = googleAqiData.features.find(f => f.properties.name.toLowerCase().includes(term));
+          if (match) {
+            view.goTo({ center: match.geometry.coordinates, zoom: 12 }, { duration: 1500 });
+            toast(`🔍 Found ${match.properties.name} in Google AQI data`);
+            return;
+          }
+        }
+        
+        const query = citiesLayer.createQuery();
+        query.where = `LOWER(CITY_NAME) LIKE '%${term.replace(/'/g, "''")}%'`;
+        query.outFields = ["CITY_NAME"];
+        query.returnGeometry = true;
+        citiesLayer.queryFeatures(query).then(result => {
+            if (result.features.length > 0) {
+                const feature = result.features[0];
+                view.goTo(feature.geometry);
+                toast(`🔍 Found ${feature.attributes.CITY_NAME}`);
+            } else {
+                toast("City not found in available data.", 2500);
+            }
+        });
+      }
+      document.getElementById("searchBtn").addEventListener("click", performSearch);
+      document.getElementById("searchInput").addEventListener("keypress", e => { if(e.key === "Enter") performSearch(); });
     });
 
-    // Chat functionality (stub)
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input-field');
-    const chatSend = document.getElementById('chat-send');
+    function setWindPreset(preset) {
+        if (!window.currentFlowLayer?.renderer?.type === "flow") return;
+        const renderer = window.currentFlowLayer.renderer;
+        
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.preset-btn[onclick="setWindPreset('${preset}')"]`).classList.add('active');
+        
+        const presets = {
+            subtle: { density: 0.3, flowSpeed: 3, trailLength: 80 },
+            normal: { density: 0.6, flowSpeed: 6, trailLength: 120 },
+            intense: { density: 0.9, flowSpeed: 12, trailLength: 180 }
+        };
+        const config = presets[preset] || presets.normal;
+        
+        Object.assign(renderer, config);
+        
+        document.getElementById("windSpeed").value = config.flowSpeed;
+        document.getElementById("windDensity").value = config.density;
+        document.getElementById("windTrail").value = config.trailLength;
+        document.getElementById("speedValue").textContent = config.flowSpeed;
+        document.getElementById("densityValue").textContent = config.density;
+        document.getElementById("trailValue").textContent = config.trailLength;
+    }
+    window.setWindPreset = setWindPreset;
 
-    chatSend.addEventListener('click', () => {
-      const msg = chatInput.value.trim();
-      if (!msg) return;
-      chatMessages.innerHTML += `<div class="mb-2"><b>You:</b> ${msg}</div>`;
-      chatInput.value = '';
-      setTimeout(() => {
-        chatMessages.innerHTML += `<div class="mb-2 text-blue-600"><b>AQI Bot:</b> I'm still learning to answer that!</div>`;
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }, 800);
-    });
+    // Mascot and Chat Bubble Controller
+    (function() {
+        const mascotContainer = document.getElementById('mascotContainer');
+        const mascotBtn = document.getElementById('mascotBtn');
+        const chatBubble = document.getElementById('chatBubble');
+        const closeChat = document.getElementById('closeChat');
+        const chatInput = document.getElementById('chatInput');
+        const chatSend = document.getElementById('chatSend');
+        const chatMessages = document.getElementById('chatMessages');
+
+        let isDragging = false, hasDragged = false;
+        let dragStartX, dragStartY, containerStartX, containerStartY, clickStartTime;
+        const CLICK_TIME_THRESHOLD = 300, CLICK_MOVE_THRESHOLD = 5;
+        let chatHistory = [];
+
+        function loadPosition() {
+            try {
+                const pos = JSON.parse(localStorage.getItem('mascotPosition'));
+                if (pos) {
+                    mascotContainer.style.left = pos.x + 'px';
+                    mascotContainer.style.top = pos.y + 'px';
+                }
+            } catch (e) {}
+        }
+
+        function savePosition() {
+            try {
+                const rect = mascotContainer.getBoundingClientRect();
+                localStorage.setItem('mascotPosition', JSON.stringify({ x: rect.left, y: rect.top }));
+            } catch (e) {}
+        }
+
+        function updateBubblePosition() {
+            const rect = mascotContainer.getBoundingClientRect();
+            chatBubble.classList.toggle('left', rect.left > window.innerWidth - 500);
+            chatBubble.classList.toggle('right', rect.left <= window.innerWidth - 500);
+        }
+
+        function toggleChat() {
+            const isOpen = chatBubble.classList.toggle('open');
+            if (isOpen) {
+                updateBubblePosition();
+                chatInput.focus();
+            }
+        }
+
+        mascotBtn.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            hasDragged = false;
+            clickStartTime = Date.now();
+            const rect = mascotContainer.getBoundingClientRect();
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            containerStartX = rect.left;
+            containerStartY = rect.top;
+            mascotBtn.classList.add('dragging');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            const deltaX = e.clientX - dragStartX, deltaY = e.clientY - dragStartY;
+            if (Math.abs(deltaX) > CLICK_MOVE_THRESHOLD || Math.abs(deltaY) > CLICK_MOVE_THRESHOLD) hasDragged = true;
+            const newX = containerStartX + deltaX, newY = containerStartY + deltaY;
+            const maxX = window.innerWidth - 84, maxY = window.innerHeight - 84;
+            mascotContainer.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+            mascotContainer.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+            if (chatBubble.classList.contains('open')) updateBubblePosition();
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (!isDragging) return;
+            isDragging = false;
+            mascotBtn.classList.remove('dragging');
+            if (!hasDragged && (Date.now() - clickStartTime < CLICK_TIME_THRESHOLD)) toggleChat();
+            else savePosition();
+        });
+
+        closeChat.addEventListener('click', () => chatBubble.classList.remove('open'));
+
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            addMessage(text, true);
+            chatHistory.push({ role: "user", content: text });
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSend.disabled = true;
+            const thinkingMsg = addMessage('Analyzing...', false);
+
+            try {
+                const response = await fetch('/.netlify/functions/AQI-Chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMessage: text, history: chatHistory.slice(0, -1) })
+                });
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const data = await response.json();
+                thinkingMsg.textContent = data.reply || "I couldn't process that request.";
+                chatHistory.push({ role: "assistant", content: data.reply });
+
+                if (data.action?.type === 'zoomTo') {
+                    const { city, country } = data.action;
+                    if (window.zoomToCity) {
+                        document.getElementById('overlayStatus').textContent = `🗺️ Zooming to ${city}...`;
+                        window.zoomToCity(city, country);
+                    }
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                thinkingMsg.textContent = 'Sorry, I couldn\'t connect. Please try again.';
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSend.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+        window.addEventListener('resize', () => { if (chatBubble.classList.contains('open')) updateBubblePosition(); });
+        loadPosition();
+    })();
   </script>
 </body>
 </html>
-
