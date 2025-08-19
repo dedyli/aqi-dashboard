@@ -52,6 +52,32 @@
     .preset-btn:hover{background:rgba(255,255,255,.2)}
     .preset-btn.active{background:#0079c1}
 
+    .flow-type-btn {
+        width: 100%;
+        padding: 10px 12px;
+        margin: 4px 0;
+        background: rgba(255,255,255,.12);
+        border: 0;
+        color: #fff;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+        transition: all .2s;
+        font-size: 13px;
+        text-align: left;
+    }
+
+    .flow-type-btn:hover {
+        background: rgba(255,255,255,.22);
+        transform: translateY(-1px);
+    }
+
+    .flow-type-btn.active {
+        background: #0079c1;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+
     /* Mascot and Chat Bubble Styles */
     #mascotContainer {
         position: fixed;
@@ -292,6 +318,7 @@
       • World cities: Major cities worldwide<br/>
       • Regional AQI: Google Air Quality API<br/>
       • Wind data: NLDAS Hurricane Ida (animated)<br/>
+      • Ocean currents: Global ocean circulation (animated)<br/>
       • Fire data: NASA VIIRS thermal hotspots (24hr)
     </div>
 <h3>ℹ️ Status</h3>
@@ -317,8 +344,8 @@
 <label><input checked="" id="layerGoogleAQI" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
-<span>🌪️ Animated Wind Flow</span>
-<label><input checked="" id="layerWind" type="checkbox"/> Visible</label>
+<span>🌊 Flow Animation (Active)</span>
+<label><input checked="" id="layerFlow" type="checkbox"/> Visible</label>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
 <span>🌡️ Weather Stations</span>
@@ -337,23 +364,50 @@
 <label><input checked="" id="layerLegend" type="checkbox"/> Visible</label>
 </div>
 
-<h3>🌪️ Wind Animation Settings</h3>
+<h3>🌊 Flow Animation Type</h3>
+<div style="margin:8px 0">
+  <button class="flow-type-btn active" onclick="switchFlowType('ocean')" data-type="ocean">
+    🌊 Global Ocean Currents
+  </button>
+</div>
+<div style="margin:8px 0">
+  <button class="flow-type-btn" onclick="switchFlowType('wind-na')" data-type="wind-na">
+    🌪️ North America Wind
+  </button>
+</div>
+<div style="margin:8px 0">
+  <button class="flow-type-btn" onclick="switchFlowType('wind-global')" data-type="wind-global">
+    🌬️ Global Wind Field
+  </button>
+</div>
+
+<h3>🎮 Flow Animation Settings</h3>
 <div class="wind-control">
-  <label>Flow Speed: <span class="wind-control-value" id="speedValue">8</span></label>
-  <input type="range" id="windSpeed" min="1" max="20" value="8">
+  <label>Flow Speed: <span class="wind-control-value" id="speedValue">6</span></label>
+  <input type="range" id="windSpeed" min="1" max="20" value="6">
 </div>
 <div class="wind-control">
-  <label>Density: <span class="wind-control-value" id="densityValue">0.6</span></label>
-  <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.6">
+  <label>Density: <span class="wind-control-value" id="densityValue">0.7</span></label>
+  <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7">
 </div>
 <div class="wind-control">
-  <label>Trail Length: <span class="wind-control-value" id="trailValue">150</span></label>
-  <input type="range" id="windTrail" min="50" max="300" value="150">
+  <label>Trail Length: <span class="wind-control-value" id="trailValue">120</span></label>
+  <input type="range" id="windTrail" min="50" max="300" value="120">
 </div>
 <div class="preset-buttons">
   <button class="preset-btn" onclick="setWindPreset('subtle')">Subtle</button>
   <button class="preset-btn active" onclick="setWindPreset('normal')">Normal</button>
   <button class="preset-btn" onclick="setWindPreset('intense')">Intense</button>
+</div>
+
+<h3>ℹ️ Flow Data Info</h3>
+<div style="opacity:.9;font-size:12px;line-height:1.4">
+  <div id="flowInfo" style="margin:8px 0">
+    <strong>🌊 Global Ocean Currents:</strong><br>
+    • Worldwide coverage<br>
+    • Shows global ocean circulation<br>
+    • Real ocean current patterns
+  </div>
 </div>
 </aside>
 <div id="viewDiv">
@@ -405,6 +459,78 @@
         map, center: [105, 35], zoom: 4,
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
+
+    // Global Flow Switching Functions
+    function switchFlowType(type) {
+      // Hide all flow layers
+      globalOceanCurrentsLayer.visible = false;
+      northAmericaWindLayer.visible = false;
+      globalWindLayer.visible = false;
+      
+      // Update active button
+      document.querySelectorAll('.flow-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelector(`[data-type="${type}"]`).classList.add('active');
+      
+      // Show selected layer and update current reference
+      switch(type) {
+        case 'ocean':
+          globalOceanCurrentsLayer.visible = true;
+          window.currentFlowLayer = globalOceanCurrentsLayer;
+          windLayer = globalOceanCurrentsLayer; // For backward compatibility
+          updateFlowInfo('ocean');
+          break;
+        case 'wind-na':
+          northAmericaWindLayer.visible = true;
+          window.currentFlowLayer = northAmericaWindLayer;
+          windLayer = northAmericaWindLayer;
+          updateFlowInfo('wind-na');
+          break;
+        case 'wind-global':
+          globalWindLayer.visible = true;
+          window.currentFlowLayer = globalWindLayer;
+          windLayer = globalWindLayer;
+          updateFlowInfo('wind-global');
+          break;
+      }
+      
+      updateLegend();
+    }
+
+    function updateFlowInfo(type) {
+      const infoDiv = document.getElementById('flowInfo');
+      switch(type) {
+        case 'ocean':
+          infoDiv.innerHTML = `
+            <strong>🌊 Global Ocean Currents:</strong><br>
+            • Worldwide coverage<br>
+            • Shows global ocean circulation<br>
+            • Real ocean current patterns
+          `;
+          break;
+        case 'wind-na':
+          infoDiv.innerHTML = `
+            <strong>🌪️ North America Wind:</strong><br>
+            • Hurricane Ida data (Aug 2021)<br>
+            • High-resolution wind patterns<br>
+            • Dramatic storm visualization
+          `;
+          break;
+        case 'wind-global':
+          infoDiv.innerHTML = `
+            <strong>🌬️ Global Wind Field:</strong><br>
+            • NDFD wind forecast data<br>
+            • Limited global coverage<br>
+            • Atmospheric wind patterns
+          `;
+          break;
+      }
+    }
+
+    // Make functions globally available
+    window.switchFlowType = switchFlowType;
+    window.updateFlowInfo = updateFlowInfo;
 
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
 
@@ -529,12 +655,51 @@
       });
       map.add(citiesLayer);
 
-      // Animated Wind Streamlines Layer
-      windLayer = new ImageryTileLayer({
-        url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
-        title: "Animated Wind Flow",
-        opacity: 0.85,
+      // GLOBAL FLOW LAYERS
+      
+      // Global Ocean Currents (Worldwide coverage)
+      const globalOceanCurrentsLayer = new ImageryTileLayer({
+        url: "https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
+        title: "Global Ocean Currents",
+        opacity: 0.8,
         visible: true,
+        renderer: new FlowRenderer({
+          type: "flow",
+          density: 0.7,
+          flowSpeed: 6,
+          trailLength: 120,
+          trailWidth: "2px",
+          maxPathLength: 180,
+          visualVariables: [{
+            type: "color",
+            field: "Magnitude",
+            stops: [
+              { color: [30, 100, 150, 0.6], value: 0 },
+              { color: [50, 150, 200, 0.7], value: 0.1 },
+              { color: [100, 200, 255, 0.8], value: 0.3 },
+              { color: [150, 255, 200, 0.9], value: 0.6 },
+              { color: [255, 255, 100, 1], value: 1.0 },
+              { color: [255, 100, 100, 1], value: 1.5 }
+            ]
+          }]
+        }),
+        popupTemplate: {
+          title: "🌊 Global Ocean Currents",
+          content: `<div style="line-height:1.5">
+            <b>🌊 Current Speed:</b> {Magnitude} m/s<br>
+            <b>🧭 Current Direction:</b> {Direction}°<br>
+            <b>📊 Data Source:</b> Global Ocean Current Model<br>
+            <b>🌍 Coverage:</b> Worldwide Ocean Currents
+          </div>`
+        }
+      });
+
+      // North American Wind (Hurricane Ida)
+      const northAmericaWindLayer = new ImageryTileLayer({
+        url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
+        title: "North America Wind Flow",
+        opacity: 0.85,
+        visible: false,
         renderer: new FlowRenderer({
           type: "flow",
           density: 0.6,
@@ -556,7 +721,7 @@
           }]
         }),
         popupTemplate: {
-          title: "🌪️ Wind Data",
+          title: "🌪️ Hurricane Ida Wind Data",
           content: `<div style="line-height:1.5">
             <b>💨 Wind Speed:</b> {Magnitude} m/s<br>
             <b>🧭 Wind Direction:</b> {Direction}°<br>
@@ -565,7 +730,55 @@
           </div>`
         }
       });
-      map.add(windLayer, 2);
+
+      // Global Wind Field (Limited coverage)
+      const globalWindLayer = new ImageryTileLayer({
+        url: "https://sampleserver6.arcgisonline.com/arcgis/rest/services/ScientificData/NDFD_wind/ImageServer",
+        title: "Global Wind Field",
+        opacity: 0.8,
+        visible: false,
+        renderer: new FlowRenderer({
+          type: "flow",
+          density: 0.5,
+          flowSpeed: 5,
+          trailLength: 100,
+          trailWidth: "1.5px",
+          maxPathLength: 150,
+          visualVariables: [{
+            type: "color",
+            field: "Magnitude",
+            stops: [
+              { color: [100, 200, 100, 0.7], value: 0 },
+              { color: [150, 255, 150, 0.8], value: 5 },
+              { color: [255, 255, 100, 0.9], value: 15 },
+              { color: [255, 150, 50, 1], value: 25 },
+              { color: [255, 50, 50, 1], value: 35 }
+            ]
+          }]
+        }),
+        popupTemplate: {
+          title: "🌬️ Wind Field Data",
+          content: `<div style="line-height:1.5">
+            <b>💨 Wind Speed:</b> {Magnitude} knots<br>
+            <b>🧭 Wind Direction:</b> {Direction}°<br>
+            <b>📊 Data Source:</b> NDFD Wind Data
+          </div>`
+        }
+      });
+
+      // Add all flow layers to map
+      map.add(globalOceanCurrentsLayer, 2);
+      map.add(northAmericaWindLayer, 2);
+      map.add(globalWindLayer, 2);
+
+      // Set default active layer
+      windLayer = globalOceanCurrentsLayer; // For backward compatibility
+      window.currentFlowLayer = globalOceanCurrentsLayer;
+      window.flowLayers = {
+        oceanCurrents: globalOceanCurrentsLayer,
+        northAmericaWind: northAmericaWindLayer,
+        globalWind: globalWindLayer
+      };
 
       // Weather Stations Layer
       weatherStationsLayer = new FeatureLayer({
@@ -657,7 +870,7 @@
             layerInfos.push({ layer: googleAqiLayer, title: "Cities (Google AQI)" });
         }
         if (windLayer && windLayer.visible) {
-            layerInfos.push({ layer: windLayer, title: "🌪️ Animated Wind Flow" });
+            layerInfos.push({ layer: windLayer, title: "🌊 Animated Flow" });
         }
         if (weatherStationsLayer && weatherStationsLayer.visible) {
             layerInfos.push({ layer: weatherStationsLayer, title: "🌡️ Weather Stations" });
@@ -761,31 +974,34 @@
       // Layer controls
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
-      document.getElementById("layerWind").addEventListener("change", e => { if (windLayer) windLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerFlow").addEventListener("change", e => { 
+        if (window.currentFlowLayer) window.currentFlowLayer.visible = e.target.checked; 
+        updateLegend(); 
+      });
       document.getElementById("layerWeatherStations").addEventListener("change", e => { if (weatherStationsLayer) weatherStationsLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
 
-      // Wind animation controls
+      // Flow animation controls
       document.getElementById("windSpeed").addEventListener("input", function() {
         document.getElementById("speedValue").textContent = this.value;
-        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
-          windLayer.renderer.flowSpeed = parseInt(this.value);
+        if (window.currentFlowLayer && window.currentFlowLayer.renderer && window.currentFlowLayer.renderer.type === "flow") {
+          window.currentFlowLayer.renderer.flowSpeed = parseInt(this.value);
         }
       });
 
       document.getElementById("windDensity").addEventListener("input", function() {
         document.getElementById("densityValue").textContent = this.value;
-        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
-          windLayer.renderer.density = parseFloat(this.value);
+        if (window.currentFlowLayer && window.currentFlowLayer.renderer && window.currentFlowLayer.renderer.type === "flow") {
+          window.currentFlowLayer.renderer.density = parseFloat(this.value);
         }
       });
 
       document.getElementById("windTrail").addEventListener("input", function() {
         document.getElementById("trailValue").textContent = this.value;
-        if (windLayer && windLayer.renderer && windLayer.renderer.type === "flow") {
-          windLayer.renderer.trailLength = parseInt(this.value);
+        if (window.currentFlowLayer && window.currentFlowLayer.renderer && window.currentFlowLayer.renderer.type === "flow") {
+          window.currentFlowLayer.renderer.trailLength = parseInt(this.value);
         }
       });
 
@@ -823,10 +1039,9 @@
     // Wind preset functions
     function setWindPreset(preset) {
       require(["esri/layers/ImageryTileLayer"], function() {
-        const windLayer = window.windLayer || Array.from(document.querySelectorAll('[data-layer="wind"]'))[0];
-        if (!windLayer || !windLayer.renderer || windLayer.renderer.type !== "flow") return;
+        if (!window.currentFlowLayer || !window.currentFlowLayer.renderer || window.currentFlowLayer.renderer.type !== "flow") return;
         
-        const renderer = windLayer.renderer;
+        const renderer = window.currentFlowLayer.renderer;
         
         // Reset button styles
         document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
@@ -835,20 +1050,20 @@
         switch(preset) {
           case 'subtle':
             renderer.density = 0.3;
-            renderer.flowSpeed = 4;
-            renderer.trailLength = 100;
+            renderer.flowSpeed = 3;
+            renderer.trailLength = 80;
             renderer.trailWidth = "1px";
             break;
           case 'normal':
             renderer.density = 0.6;
-            renderer.flowSpeed = 8;
-            renderer.trailLength = 150;
+            renderer.flowSpeed = 6;
+            renderer.trailLength = 120;
             renderer.trailWidth = "2px";
             break;
           case 'intense':
             renderer.density = 0.9;
-            renderer.flowSpeed = 15;
-            renderer.trailLength = 200;
+            renderer.flowSpeed = 12;
+            renderer.trailLength = 180;
             renderer.trailWidth = "3px";
             break;
         }
