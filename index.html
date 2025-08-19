@@ -1043,7 +1043,6 @@
     
     <div class="sidebar-content">
         <div class="tab-panel active" id="dataPanel">
-            <!-- Global Search Section -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🔍</div>
@@ -1056,7 +1055,6 @@
                 <button class="search-btn" id="searchBtn">Analyze Location</button>
             </div>
 
-            <!-- Most Polluted Cities -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🏭</div>
@@ -1070,7 +1068,6 @@
                 </div>
             </div>
 
-            <!-- Google AQI Cities -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🌍</div>
@@ -1084,7 +1081,6 @@
                 </div>
             </div>
 
-            <!-- Data Sources & Notes -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">📈</div>
@@ -1107,7 +1103,6 @@
         </div>
 
         <div class="tab-panel" id="settingsPanel">
-            <!-- Map Styles -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🗺️</div>
@@ -1125,7 +1120,6 @@
                 </div>
             </div>
 
-            <!-- Data Layers -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">📊</div>
@@ -1134,6 +1128,10 @@
                 <div class="layer-control">
                     <label><span>PM2.5 Stations (OpenAQ)</span></label>
                     <input checked type="checkbox" id="layerAQI"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>🔥 PM2.5 Heatmap View</span></label>
+                    <input type="checkbox" id="layerHeatmap"/>
                 </div>
                 <div class="layer-control">
                     <label><span>Cities (Google AQI)</span></label>
@@ -1161,7 +1159,6 @@
                 </div>
             </div>
 
-            <!-- Flow Animation Type -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🌊</div>
@@ -1175,7 +1172,6 @@
                 </div>
             </div>
 
-            <!-- Flow Animation Settings -->
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-icon">🎮</div>
@@ -1235,8 +1231,10 @@
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
       "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
       "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
+      // NEW: Added HeatmapRenderer module
+      "esri/renderers/HeatmapRenderer",
       "esri/widgets/Legend","esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, HeatmapRenderer, Legend, esriConfig) {
 
       let googleAqiLayer = null;
       let googleAqiData = null;
@@ -1244,6 +1242,10 @@
       let weatherStationsLayer = null;
       let fireLayer = null;
       
+      // NEW: Variables to store original renderer and heatmap renderer
+      let pm25OriginalRenderer;
+      let heatmapRenderer;
+
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
         container: "viewDiv",
@@ -1301,6 +1303,35 @@
         el._t = setTimeout(() => el.style.display = "none", ms);
       };
 
+      // NEW: Configuration object for point clustering. Can be reused.
+      const clusterConfig = {
+        type: "cluster",
+        clusterRadius: "80px",
+        popupTemplate: {
+          title: "Cluster Summary",
+          content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 value of <b>{cluster_avg_value}</b> µg/m³.",
+          fieldInfos: [{
+            fieldName: "cluster_count", format: { places: 0, digitSeparator: true }
+          }, {
+            fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true }
+          }]
+        },
+        clusterMinSize: "20px",
+        clusterMaxSize: "50px",
+        labelingInfo: [{
+          deconflictionStrategy: "none",
+          labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" },
+          symbol: { type: "text", color: "#000", font: { weight: "bold", family: "Inter", size: "12px" } },
+          labelPlacement: "center-center",
+        }],
+        // Add a summary statistic to calculate average value in the cluster
+        summaryStatistics: [{
+            onStatisticField: "value",
+            outStatisticFieldName: "cluster_avg_value",
+            statisticType: "avg"
+        }]
+      };
+
       function createGoogleAqiLayer(geoJsonData) {
         const blob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1308,6 +1339,32 @@
           url: url,
           title: "Cities (Google AQI)",
           copyright: "© Google Air Quality API - Live Data",
+          // NEW: Added featureReduction for clustering Google AQI points
+          featureReduction: {
+            type: "cluster",
+            clusterRadius: "80px",
+            popupTemplate: {
+                title: "Cluster Summary",
+                content: "This cluster represents <b>{cluster_count}</b> cities with an average AQI of <b>{cluster_avg_aqi}</b>.",
+                fieldInfos: [
+                    { fieldName: "cluster_count", format: { places: 0, digitSeparator: true } },
+                    { fieldName: "cluster_avg_aqi", format: { places: 0, digitSeparator: true } }
+                ]
+            },
+            clusterMinSize: "20px",
+            clusterMaxSize: "50px",
+            labelingInfo: [{
+                deconflictionStrategy: "none",
+                labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" },
+                symbol: { type: "text", color: "#ffffff", haloColor: "#000000", haloSize: "1px", font: { weight: "bold", family: "Inter", size: "12px" } },
+                labelPlacement: "center-center",
+            }],
+            summaryStatistics: [{
+                onStatisticField: "aqi",
+                outStatisticFieldName: "cluster_avg_aqi",
+                statisticType: "avg"
+            }]
+          },
           renderer: {
             type: "class-breaks",
             field: "aqi",
@@ -1379,6 +1436,8 @@
       const pm25Layer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
+        // NEW: Added featureReduction for clustering
+        featureReduction: clusterConfig,
         popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5"><b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br><b>Updated:</b> {lastUpdated}<br><a href="{url}" target="_blank" rel="noopener">Station link</a></div>` },
         renderer:{ type:"class-breaks", field:"value", classBreakInfos:[
           {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:"#fff",width:1}},label:"Good (0–10)"},
@@ -1390,6 +1449,26 @@
         ]}
       });
       map.add(pm25Layer);
+      
+      // NEW: Store the original renderer and define the heatmap renderer
+      pm25Layer.when(() => {
+        pm25OriginalRenderer = pm25Layer.renderer;
+        heatmapRenderer = new HeatmapRenderer({
+            field: "value",
+            colorStops: [
+              { color: "rgba(102, 238, 234, 0)", ratio: 0 },
+              { color: "rgba(102, 238, 234, 0.7)", ratio: 0.08 },
+              { color: "rgba(91, 214, 255, 0.7)", ratio: 0.16 },
+              { color: "rgba(255, 255, 0, 0.75)", ratio: 0.35 },
+              { color: "rgba(255, 126, 0, 0.8)", ratio: 0.5 },
+              { color: "rgba(255, 0, 0, 0.9)", ratio: 0.75 },
+              { color: "rgba(143, 63, 151, 1)", ratio: 1 }
+            ],
+            blurRadius: 10,
+            maxPixelIntensity: 200,
+            minPixelIntensity: 10
+        });
+      });
 
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
@@ -1582,6 +1661,25 @@
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
+
+      // NEW: Event listener for the heatmap toggle
+      document.getElementById("layerHeatmap").addEventListener("change", e => {
+        if (e.target.checked) {
+            // Switch to heatmap renderer
+            pm25Layer.renderer = heatmapRenderer;
+            // Heatmap doesn't work with clustering, so we disable it
+            pm25Layer.featureReduction = null;
+            // Ensure the layer is visible
+            document.getElementById("layerAQI").checked = true;
+            pm25Layer.visible = true;
+        } else {
+            // Switch back to the original class breaks renderer
+            pm25Layer.renderer = pm25OriginalRenderer;
+            // Re-enable clustering
+            pm25Layer.featureReduction = clusterConfig;
+        }
+        updateLegend();
+      });
 
       // Flow animation controls
       const setupFlowControl = (inputId, valueId, property) => {
