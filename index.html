@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Global Air Quality Intelligence Platform [V2]</title>
+<title>Global Air Quality Intelligence Platform [V2 Final]</title>
 <link href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" rel="stylesheet"/>
 <script src="https://js.arcgis.com/4.29/"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +21,8 @@
         --text-muted: #606070;
         --accent-gold: #FFD700;
         --accent-glow: rgba(255, 215, 0, 0.4);
+        --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+
 
         /* Sizing & Radius */
         --radius: 12px;
@@ -86,11 +88,13 @@
         opacity: 0;
         transform: scale(0.95);
         overflow: hidden;
+        visibility: hidden;
     }
 
     .floating-panel.visible {
         opacity: 1;
         transform: scale(1);
+        visibility: visible;
     }
     
     .floating-panel.active {
@@ -123,7 +127,7 @@
     }
     
     .panel-icon { margin-right: 12px; font-size: 16px; opacity: 0.8; }
-    .panel-title { font-weight: 600; font-size: 15px; flex-grow: 1; }
+    .panel-title { font-weight: 600; font-size: 15px; flex-grow: 1; user-select: none; }
     
     .panel-controls button {
         background: none; border: none; color: var(--text-secondary);
@@ -154,6 +158,7 @@
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: -1;
         overflow: hidden;
+        border-radius: var(--radius);
     }
     .panel-aurora::before, .panel-aurora::after {
         content: '';
@@ -265,29 +270,105 @@
         border-color: var(--accent-gold);
     }
 
-    #loading { font-size: 20px; color: var(--accent-gold); }
+    #loading { font-size: 20px; color: var(--accent-gold); text-shadow: 0 0 10px var(--accent-glow); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);}
+
+    /* --- CHAT PANEL SPECIFIC STYLES --- */
+    #panel-chat .panel-content {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    #chatMessages {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--padding);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .message {
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        max-width: 85%;
+        word-wrap: break-word;
+        font-size: 15px;
+        line-height: 1.6;
+        animation: messageSlideIn 0.4s var(--ease-out);
+    }
+     @keyframes messageSlideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .message.user {
+        align-self: flex-end;
+        background: var(--accent-gradient);
+        color: #050507;
+        font-weight: 500;
+    }
+    .message.bot {
+        align-self: flex-start;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        border: 1px solid var(--panel-border);
+    }
+    #chatInputArea {
+        display: flex;
+        padding: var(--padding);
+        border-top: 1px solid var(--panel-border);
+        background: rgba(0,0,0,0.2);
+        gap: 12px;
+    }
+    #chatInput {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid var(--panel-border);
+        background: rgba(0,0,0,0.3);
+        color: var(--text-primary);
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    #chatInput:focus {
+        outline: none;
+        border-color: var(--accent-gold);
+        box-shadow: 0 0 10px var(--accent-glow);
+    }
+    #chatSend {
+        padding: 12px 20px;
+        border: none;
+        background: var(--accent-gold);
+        color: #050507;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    #chatSend:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    #chatSend:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
 </head>
 <body>
 
-<div id="viewDiv"><div id="loading">Loading map...</div></div>
+<div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
 
 <div id="uiContainer">
-    <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: 20px; left: 20px;">
+    <div class="floating-panel visible" id="panel-explorer" style="width: 380px; height: 500px; top: 20px; left: 20px;">
         <div class="panel-header">
             <span class="panel-icon">🔍</span>
             <span class="panel-title">Data Explorer</span>
             <div class="panel-controls"><button class="close-btn">×</button></div>
         </div>
-        <div class="panel-content">
-            <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." />
-            <div id="explorer-content" style="margin-top: 20px;">
-                </div>
-        </div>
+        <div class="panel-content" id="explorer-content">
+            </div>
         <div class="panel-aurora"></div>
     </div>
     
-    <div class="floating-panel" id="panel-layers" style="width: 320px; height: auto; top: 20px; right: 20px;">
+    <div class="floating-panel visible" id="panel-layers" style="width: 320px; height: auto; top: 20px; right: 20px;">
          <div class="panel-header">
             <span class="panel-icon">📊</span>
             <span class="panel-title">Layer Controls</span>
@@ -318,7 +399,7 @@
         <div class="panel-aurora"></div>
     </div>
     
-    <div class="floating-panel" id="panel-critical" style="width: 360px; height: 450px; top: 540px; left: 20px;">
+    <div class="floating-panel visible" id="panel-critical" style="width: 360px; height: 450px; top: 380px; right: 20px;">
         <div class="panel-header">
             <span class="panel-icon">🏭</span>
             <span class="panel-title">Critical AQ Zones</span>
@@ -328,41 +409,43 @@
              </div>
         <div class="panel-aurora"></div>
     </div>
-
+    
+    <div class="floating-panel" id="panel-chat" style="width: 420px; height: 550px; bottom: 90px; left: 50%; transform: translateX(-50%);">
+        <div class="panel-header">
+            <span class="panel-icon">💬</span>
+            <span class="panel-title">AI Assistant</span>
+            <div class="panel-controls"><button class="close-btn">×</button></div>
+        </div>
+        <div class="panel-content">
+            <div id="chatMessages">
+                <div class="message bot">Ask me about air quality. Try: "What's the PM2.5 in Beijing?" or "Show me the most polluted cities."</div>
+            </div>
+            <div id="chatInputArea">
+                <input id="chatInput" type="text" placeholder="Ask a question..." />
+                <button id="chatSend">Send</button>
+            </div>
+        </div>
+        <div class="panel-aurora"></div>
+    </div>
 </div>
 
 <div id="controlDock">
     <button class="dock-btn active" data-panel="panel-explorer" title="Data Explorer">🔍</button>
     <button class="dock-btn active" data-panel="panel-layers" title="Layer Controls">📊</button>
     <button class="dock-btn active" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
-    </div>
-
-<div id="mascotContainer" style="z-index: 100;">
-    <button id="mascotBtn" title="Click to chat with AQI Assistant">
-        <img src="mascot.png" alt="AQI Warrior mascot" />
-    </button>
-    <div id="chatBubble" class="left" style="z-index: 101;">
-        </div>
+    <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
 </div>
 
-
 <script>
-    // All existing requireJS and application logic goes here
-    // ... including the mascot and chat controller
-    // Key changes will be to adapt the UI updates to the new panel system.
-    
-    // --- NEW DYNAMIC PANEL LOGIC ---
+    // --- DYNAMIC PANEL LOGIC ---
     function initializeFloatingPanels() {
-        const uiContainer = document.getElementById('uiContainer');
         const panels = document.querySelectorAll('.floating-panel');
         const dockBtns = document.querySelectorAll('.dock-btn');
         let activePanel = null;
         let highestZ = 10;
 
         function setActive(panel) {
-            if (activePanel) {
-                activePanel.classList.remove('active');
-            }
+            if (activePanel) activePanel.classList.remove('active');
             if (panel) {
                 highestZ++;
                 panel.style.zIndex = highestZ;
@@ -375,18 +458,24 @@
             const header = panel.querySelector('.panel-header');
             const closeBtn = panel.querySelector('.close-btn');
             
-            // Show panel initially if its dock button is active
             const dockBtn = document.querySelector(`.dock-btn[data-panel="${panel.id}"]`);
             if (dockBtn && dockBtn.classList.contains('active')) {
                 panel.classList.add('visible');
             }
 
             function onDrag({movementX, movementY}) {
-                let style = window.getComputedStyle(panel);
-                let left = parseInt(style.left);
-                let top = parseInt(style.top);
+                const style = window.getComputedStyle(panel);
+                // We need to handle `transform` for centered panels
+                const matrix = new DOMMatrix(style.transform);
+                const currentX = matrix.m41;
+                const currentY = matrix.m42;
+                
+                const left = parseInt(style.left) + currentX;
+                const top = parseInt(style.top) + currentY;
+
                 panel.style.left = `${left + movementX}px`;
                 panel.style.top = `${top + movementY}px`;
+                panel.style.transform = ''; // Clear transform after dragging
             }
 
             header.addEventListener('mousedown', () => {
@@ -394,10 +483,7 @@
                 header.addEventListener('mousemove', onDrag);
             });
 
-            document.addEventListener('mouseup', () => {
-                header.removeEventListener('mousemove', onDrag);
-            });
-            
+            document.addEventListener('mouseup', () => header.removeEventListener('mousemove', onDrag));
             panel.addEventListener('mousedown', () => setActive(panel));
 
             if (closeBtn) {
@@ -416,20 +502,72 @@
                 if (panel) {
                     btn.classList.toggle('active');
                     panel.classList.toggle('visible');
-                    if (panel.classList.contains('visible')) {
-                        setActive(panel);
-                    }
+                    if (panel.classList.contains('visible')) setActive(panel);
                 }
             });
         });
         
-        // Set initial active panel
         setActive(document.getElementById('panel-explorer'));
     }
-
     document.addEventListener('DOMContentLoaded', initializeFloatingPanels);
 
-    // --- ESRI and EXISTING APP LOGIC ---
+    // --- CHAT LOGIC ---
+    function initializeChat() {
+        const chatInput = document.getElementById('chatInput');
+        const chatSend = document.getElementById('chatSend');
+        const chatMessages = document.getElementById('chatMessages');
+        let chatHistory = [];
+
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            addMessage(text, true);
+            chatHistory.push({ role: "user", content: text });
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSend.disabled = true;
+            const thinkingMsg = addMessage('Analyzing...', false);
+
+            try {
+                const response = await fetch('/.netlify/functions/AQI-Chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMessage: text, history: chatHistory.slice(0, -1) })
+                });
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const data = await response.json();
+                thinkingMsg.textContent = data.reply || "I couldn't process that request.";
+                chatHistory.push({ role: "assistant", content: data.reply });
+
+                if (data.action?.type === 'zoomTo' && window.zoomToCity) {
+                   window.zoomToCity(data.action.city, data.action.country);
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                thinkingMsg.textContent = 'Sorry, I couldn\'t connect. Please try again.';
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSend.disabled = false;
+                chatInput.focus();
+            }
+        }
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    }
+    document.addEventListener('DOMContentLoaded', initializeChat);
+
+
+    // --- ESRI and APP LOGIC ---
     require([
       "esri/Map","esri/views/MapView",
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
@@ -437,48 +575,135 @@
       "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
       "esri/widgets/Legend","esri/config"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
-      
-        // All of your existing EsriJS logic from the previous file goes here.
-        // It should work with minimal changes. The only adjustments needed are
-        // where you target elements to populate them with data.
-        
-        // For example, instead of document.getElementById("topCities").innerHTML = ...
-        // you would use the same line, as the ID is preserved in the new floating panel.
-      
+
       let googleAqiLayer = null;
-      let googleAqiData = null;
+      let pm25Layer = null;
+      let citiesLayer = null;
       let fireLayer = null;
       let flowLayer = null;
-
-      const fireBaseDefinition = "ACQ_DATE >= CURRENT_DATE - 1";
+      let legendWidget = null;
+      
+      window.zoomToCity = (city, country) => {
+        if (!pm25Layer) return;
+        const q = pm25Layer.createQuery();
+        const esc = s => String(s).replace(/'/g,"''");
+        q.where=`city='${esc(city)}' AND country_name='${esc(country)}'`;
+        q.returnGeometry=true;
+        pm25Layer.queryFeatures(q).then(res => {
+            if(res.features.length) view.goTo({ target: res.features[0].geometry, zoom: 11 }, { duration: 1500 });
+        });
+      };
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
         container: "viewDiv",
         map, center: [105, 35], zoom: 4,
-        ui: { components: ["attribution"] }, // Clean UI
+        ui: { components: ["attribution"] },
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
-      
-      // ... (Paste the entire block of your EsriJS logic here, from `try { esriConfig...` down to the end)
-      // For brevity in this example, I'll just show the concept. The full JS logic from the previous file is needed.
 
-        view.when(() => {
-            document.getElementById("loading").style.display = "none";
-            // The rest of your data loading and layer adding logic...
-        });
+      try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
+
+      // Layer Definitions
+      pm25Layer = new FeatureLayer({
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
+        title:"PM2.5 Stations (OpenAQ)", outFields:["*"]
+        // Add renderer and popupTemplate as needed
+      });
+      map.add(pm25Layer);
+
+      citiesLayer = new FeatureLayer({
+        url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
+        title:"World Cities", definitionExpression:"POP > 100000",
+        visible: false // Hidden by default to reduce clutter
+      });
+      map.add(citiesLayer);
+
+      flowLayer = new ImageryTileLayer({
+        url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
+        title:"Global Ocean Currents", opacity:0.8,
+        renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 })
+      });
+      map.add(flowLayer);
+
+      fireLayer = new FeatureLayer({
+        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
+        title:"Active Fires (VIIRS)",
+        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1 AND (BRIGHT_TI4 >= 365)"
+      });
+      map.add(fireLayer);
+
+      view.when(() => {
+        document.getElementById("loading").style.display = "none";
+        
+        legendWidget = new Legend({ view });
+        view.ui.add(legendWidget, "bottom-left");
+        legendWidget.visible = document.getElementById('layerLegend').checked;
+
+        refreshTopCities();
+        loadGoogleAqiData();
+      });
+      
+      async function loadGoogleAqiData() {
+        try {
+          const response = await fetch('/.netlify/functions/google-aqi');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const geoJsonData = await response.json();
+          const blob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          
+          googleAqiLayer = new GeoJSONLayer({
+            url: url,
+            title: "Cities (Google AQI)",
+            renderer: { /* Add renderer logic */ }
+          });
+          map.add(googleAqiLayer, 1);
+        } catch (error) {
+          console.error("Failed to load Google AQI data:", error);
+        }
+      }
+
+      async function refreshTopCities(){
+        const box=document.getElementById("topCities"); 
+        box.innerHTML='<div style="text-align:center; padding: 20px;">Loading...</div>';
+        try{
+          const q=pm25Layer.createQuery();
+          q.where="value > 50 AND city IS NOT NULL";
+          q.groupByFieldsForStatistics=["city,country_name"];
+          q.outStatistics=[{statisticType:"avg",onStatisticField:"value",outStatisticFieldName:"avg_pm25"}];
+          q.orderByFields=["avg_pm25 DESC"];
+          q.num=15;
+          const res = await pm25Layer.queryFeatures(q);
+          if(!res.features.length){ 
+            box.innerHTML='<div style="opacity:.85; padding: 10px;">No critical zones detected.</div>'; 
+            return; 
+          }
+          box.innerHTML = res.features.map(f => {
+              const { city, country_name, avg_pm25 } = f.attributes;
+              return `<div class="city-item" data-city="${city}" data-country="${country_name}">...</div>`; // simplified
+          }).join('');
+          
+          // Add click listeners to zoom
+          box.querySelectorAll('.city-item').forEach(item => {
+              item.addEventListener('click', () => {
+                  window.zoomToCity(item.dataset.city, item.dataset.country);
+              });
+          });
+
+        } catch(e){ 
+          console.error(e); 
+          box.innerHTML='<div style="opacity:.85; padding: 10px; color: #ffdddd;">Failed to load.</div>'; 
+        }
+      }
 
       // Layer controls
-      document.getElementById("layerAQI").addEventListener("change", e => { if(window.pm25Layer) window.pm25Layer.visible = e.target.checked; /* updateLegend(); */ });
-      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (window.googleAqiLayer) window.googleAqiLayer.visible = e.target.checked; /* updateLegend(); */ });
-      document.getElementById("layerFlow").addEventListener("change", e => { if (window.flowLayer) window.flowLayer.visible = e.target.checked; /* updateLegend(); */ });
-      document.getElementById("layerFire").addEventListener("change", e => { if (window.fireLayer) window.fireLayer.visible = e.target.checked; /* updateLegend(); */ });
-      document.getElementById("layerLegend").addEventListener("change", e => { if(window.legendWidget) window.legendWidget.visible = e.target.checked; });
-    });
+      document.getElementById("layerAQI").addEventListener("change", e => { if(pm25Layer) pm25Layer.visible = e.target.checked; });
+      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; });
+      document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; });
+      document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; });
+      document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
 
-    // --- MASCOT LOGIC ---
-    // The existing mascot logic can be pasted here as well.
-    // It should function correctly within the new layout.
+    });
 </script>
 
 </body>
