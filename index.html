@@ -256,7 +256,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 10px 0;
-        font-size: 15px;
+        font-size: 14px;
     }
     .layer-control:not(:last-child) { border-bottom: 1px solid rgba(255,215,0,0.1); }
     
@@ -290,6 +290,8 @@
         margin-bottom: 12px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--panel-border);
+        padding-bottom: 8px;
     }
     .basemap-grid {
         display: grid;
@@ -442,9 +444,16 @@
         <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-settings" style="width: 360px; height: auto; top: calc(var(--header-height) + 16px); left: 420px;">
+    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 420px;">
          <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
          <div class="panel-content">
+            <div class="settings-section">
+                <div class="settings-title">Data Layers</div>
+                <div class="layer-control"><span>PM2.5 Stations (OpenAQ)</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>Cities (Google AQI)</span><label class="switch"><input type="checkbox" id="layerGoogleAQI" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
+            </div>
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
             <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
             <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
@@ -452,7 +461,7 @@
          <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: 600px; top: calc(var(--header-height) + 480px); right: 20px;">
+    <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 480px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Legend</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content" id="legend-container"></div>
         <div class="panel-aurora"></div>
@@ -606,6 +615,12 @@
       
       async function loadGoogleAqiData() { /* ... function from previous version ... */ }
       async function refreshTopCities() { /* ... function from previous version ... */ }
+
+      // --- LAYER VISIBILITY CONTROLS ---
+      document.getElementById("layerAQI").addEventListener("change", e => { if(pm25Layer) pm25Layer.visible = e.target.checked; });
+      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; });
+      document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; });
+      document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; });
 
       // --- SETTINGS PANEL LOGIC ---
       document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
