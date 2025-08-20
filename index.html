@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Global Air Quality Intelligence Platform [V4 Final]</title>
+<title>Global Air Quality Intelligence Platform [V5 Final]</title>
 <link href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" rel="stylesheet"/>
 <script src="https://js.arcgis.com/4.29/"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -378,7 +378,7 @@
         <div class="panel-content"> <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> <button class="search-btn" id="searchBtn">Analyze Location</button> <div id="googleAqiList" style="margin-top: 20px;"></div> </div>
         <div class="panel-aurora"></div>
     </div>
-    
+        
     <div class="floating-panel visible" id="panel-critical" style="width: 360px; height: 450px; top: 20px; right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🏭</span> <span class="panel-title">Critical AQ Zones</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content" id="topCities"></div>
@@ -420,7 +420,6 @@
     // --- DYNAMIC PANEL & DOCK LOGIC ---
     function initializeUI() {
         const panels = document.querySelectorAll('.floating-panel');
-        const dock = document.getElementById('controlDock');
         const dockBtns = document.querySelectorAll('.dock-btn');
         let activePanel = null;
         let highestZ = 10;
@@ -441,9 +440,20 @@
             const dockBtn = document.querySelector(`.dock-btn[data-panel="${panel.id}"]`);
             if (dockBtn && dockBtn.classList.contains('active')) panel.classList.add('visible');
 
-            function onDrag({movementX, movementY}) { /* ... (drag logic) ... */ }
-            header.addEventListener('mousedown', () => { /* ... (drag logic) ... */ });
-            document.addEventListener('mouseup', () => { /* ... (drag logic) ... */ });
+            function onDrag({movementX, movementY}){
+                const style = window.getComputedStyle(panel);
+                const matrix = new DOMMatrix(style.transform);
+                panel.style.left = `${parseInt(style.left) + matrix.m41 + movementX}px`;
+                panel.style.top = `${parseInt(style.top) + matrix.m42 + movementY}px`;
+                panel.style.transform = '';
+            }
+
+            header.addEventListener('mousedown', () => {
+                setActive(panel);
+                header.addEventListener('mousemove', onDrag);
+            });
+
+            document.addEventListener('mouseup', () => header.removeEventListener('mousemove', onDrag));
             panel.addEventListener('mousedown', () => setActive(panel));
 
             if (closeBtn) {
@@ -484,7 +494,7 @@
     document.addEventListener('DOMContentLoaded', initializeUI);
 
     // --- CHAT LOGIC ---
-    function initializeChat() { /* ... (full chat logic from previous version) ... */ }
+    function initializeChat() { /* ... full chat logic from previous version ... */ }
     document.addEventListener('DOMContentLoaded', initializeChat);
 
 
@@ -510,8 +520,21 @@
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
       
       const pm25Renderer = { type: "class-breaks", field: "value", classBreakInfos:[ {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:"#fff",width:0.5}},label:"Good (0–10)"}, {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:"#fff",width:0.5}},label:"Moderate (10–25)"}, {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:"#fff",width:0.5}},label:"USG (25–50)"}, {minValue:50.1,maxValue:75,symbol:{type:"simple-marker",size:12,color:"#ff0000",outline:{color:"#fff",width:0.5}},label:"Unhealthy (50–75)"}, {minValue:75.1,maxValue:100,symbol:{type:"simple-marker",size:14,color:"#8f3f97",outline:{color:"#fff",width:0.5}},label:"Very Unhealthy (75–100)"}, {minValue:100.1,maxValue:9999,symbol:{type:"simple-marker",size:16,color:"#7e0023",outline:{color:"#fff",width:0.5}},label:"Hazardous (100+)"} ] };
-      const fireRenderer = { type: "simple", symbol: { type: "simple-marker", style: "circle", outline: { width: 0 } }, visualVariables: [ { type: "color", field: "BRIGHT_TI4", stops: [ { value: 300, color: "#FFFF00" }, { value: 365, color: "#FF0000" } ] }, { type: "size", field: "BRIGHT_TI4", stops: [ { value: 300, size: 4 }, { value: 365, size: 20 } ], legendOptions: { title: "Brightness (K)" } } ] };
       
+      const fireRenderer = {
+          type: "simple",
+          symbol: {
+              type: "simple-marker",
+              style: "circle",
+              color: "#FF5733", // Vibrant orange-red
+              size: "8px",
+              outline: {
+                  color: [255, 255, 0, 0.5], // Semi-transparent yellow glow
+                  width: 1.5
+              }
+          }
+      };
+
       pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: { type: "cluster", clusterRadius: "80px" } });
       map.add(pm25Layer);
 
