@@ -1130,10 +1130,6 @@
                     <input checked type="checkbox" id="layerAQI"/>
                 </div>
                 <div class="layer-control">
-                    <label><span>🔥 PM2.5 Heatmap View</span></label>
-                    <input type="checkbox" id="layerHeatmap"/>
-                </div>
-                <div class="layer-control">
                     <label><span>Cities (Google AQI)</span></label>
                     <input checked type="checkbox" id="layerGoogleAQI"/>
                 </div>
@@ -1148,6 +1144,10 @@
                 <div class="layer-control">
                     <label><span>🔥 Active Fire Hotspots</span></label>
                     <input checked type="checkbox" id="layerFire"/>
+                </div>
+                <div class="layer-control">
+                    <label><span>🔥 Active Fires Heatmap</span></label>
+                    <input type="checkbox" id="layerFireHeatmap"/>
                 </div>
                 <div class="layer-control">
                     <label><span>World Cities</span></label>
@@ -1231,7 +1231,6 @@
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
       "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
       "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
-      // NEW: Added HeatmapRenderer module
       "esri/renderers/HeatmapRenderer",
       "esri/widgets/Legend","esri/config"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, HeatmapRenderer, Legend, esriConfig) {
@@ -1242,9 +1241,9 @@
       let weatherStationsLayer = null;
       let fireLayer = null;
       
-      // NEW: Variables to store original renderer and heatmap renderer
-      let pm25OriginalRenderer;
-      let heatmapRenderer;
+      // NEW: Variables for fire layer heatmap functionality
+      let fireOriginalRenderer;
+      let fireHeatmapRenderer;
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -1302,9 +1301,8 @@
         clearTimeout(el._t);
         el._t = setTimeout(() => el.style.display = "none", ms);
       };
-
-      // NEW: Configuration object for point clustering. Can be reused.
-      const clusterConfig = {
+      
+      const pm25ClusterConfig = {
         type: "cluster",
         clusterRadius: "80px",
         popupTemplate: {
@@ -1324,7 +1322,6 @@
           symbol: { type: "text", color: "#000", font: { weight: "bold", family: "Inter", size: "12px" } },
           labelPlacement: "center-center",
         }],
-        // Add a summary statistic to calculate average value in the cluster
         summaryStatistics: [{
             onStatisticField: "value",
             outStatisticFieldName: "cluster_avg_value",
@@ -1339,7 +1336,6 @@
           url: url,
           title: "Cities (Google AQI)",
           copyright: "© Google Air Quality API - Live Data",
-          // NEW: Added featureReduction for clustering Google AQI points
           featureReduction: {
             type: "cluster",
             clusterRadius: "80px",
@@ -1436,8 +1432,7 @@
       const pm25Layer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
         title:"PM2.5 Stations (OpenAQ)", outFields:["*"],
-        // NEW: Added featureReduction for clustering
-        featureReduction: clusterConfig,
+        featureReduction: pm25ClusterConfig,
         popupTemplate:{ title:"{location} ({country_name})", content:`<div style="line-height:1.5"><b>City:</b> {city}<br><b>PM2.5:</b> {value} {unit}<br><b>Provider:</b> {provider_name}<br><b>Updated:</b> {lastUpdated}<br><a href="{url}" target="_blank" rel="noopener">Station link</a></div>` },
         renderer:{ type:"class-breaks", field:"value", classBreakInfos:[
           {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:"#fff",width:1}},label:"Good (0–10)"},
@@ -1449,26 +1444,6 @@
         ]}
       });
       map.add(pm25Layer);
-      
-      // NEW: Store the original renderer and define the heatmap renderer
-      pm25Layer.when(() => {
-        pm25OriginalRenderer = pm25Layer.renderer;
-        heatmapRenderer = new HeatmapRenderer({
-            field: "value",
-            colorStops: [
-              { color: "rgba(102, 238, 234, 0)", ratio: 0 },
-              { color: "rgba(102, 238, 234, 0.7)", ratio: 0.08 },
-              { color: "rgba(91, 214, 255, 0.7)", ratio: 0.16 },
-              { color: "rgba(255, 255, 0, 0.75)", ratio: 0.35 },
-              { color: "rgba(255, 126, 0, 0.8)", ratio: 0.5 },
-              { color: "rgba(255, 0, 0, 0.9)", ratio: 0.75 },
-              { color: "rgba(143, 63, 151, 1)", ratio: 1 }
-            ],
-            blurRadius: 10,
-            maxPixelIntensity: 200,
-            minPixelIntensity: 10
-        });
-      });
 
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
@@ -1542,6 +1517,26 @@
         definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1"
       });
       map.add(fireLayer, 4);
+
+      // NEW: Define heatmap functionality for the fire layer
+      fireLayer.when(() => {
+        fireOriginalRenderer = fireLayer.renderer;
+        fireHeatmapRenderer = new HeatmapRenderer({
+            field: "BRIGHT_TI4", // Intensity based on brightness temperature
+            colorStops: [
+              { color: "rgba(255, 237, 160, 0)", ratio: 0 },
+              { color: "rgba(255, 237, 160, 0.7)", ratio: 0.1 },
+              { color: "rgba(254, 204, 92, 0.75)", ratio: 0.3 },
+              { color: "rgba(253, 141, 60, 0.8)", ratio: 0.5 },
+              { color: "rgba(240, 59, 32, 0.85)", ratio: 0.75 },
+              { color: "rgba(189, 0, 38, 1)", ratio: 1 }
+            ],
+            blurRadius: 8,
+            maxPixelIntensity: 50,
+            minPixelIntensity: 0
+        });
+      });
+
 
       let legendWidget = null;
       function updateLegend() {
@@ -1661,25 +1656,18 @@
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
-
-      // NEW: Event listener for the heatmap toggle
-      document.getElementById("layerHeatmap").addEventListener("change", e => {
+      
+      // NEW: Event listener for the FIRE heatmap toggle
+      document.getElementById("layerFireHeatmap").addEventListener("change", e => {
         if (e.target.checked) {
-            // Switch to heatmap renderer
-            pm25Layer.renderer = heatmapRenderer;
-            // Heatmap doesn't work with clustering, so we disable it
-            pm25Layer.featureReduction = null;
-            // Ensure the layer is visible
-            document.getElementById("layerAQI").checked = true;
-            pm25Layer.visible = true;
+            fireLayer.renderer = fireHeatmapRenderer;
+            document.getElementById("layerFire").checked = true;
+            fireLayer.visible = true;
         } else {
-            // Switch back to the original class breaks renderer
-            pm25Layer.renderer = pm25OriginalRenderer;
-            // Re-enable clustering
-            pm25Layer.featureReduction = clusterConfig;
+            fireLayer.renderer = fireOriginalRenderer;
         }
-        updateLegend();
       });
+
 
       // Flow animation controls
       const setupFlowControl = (inputId, valueId, property) => {
