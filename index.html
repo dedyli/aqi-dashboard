@@ -1161,6 +1161,20 @@
 
             <div class="section-card">
                 <div class="section-header">
+                    <div class="section-icon">🔥</div>
+                    <div class="section-title">Fire Intensity Filter</div>
+                </div>
+                <div class="flow-control">
+                    <label>Minimum Brightness (K): <span class="flow-control-value" id="brightnessValue">300</span></label>
+                    <input type="range" id="brightnessSlider" min="300" max="500" value="300" step="5">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5;">
+                        Adjust to show only fires above a certain intensity. Helps reveal gradation in the heatmap.
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
                     <div class="section-icon">🌊</div>
                     <div class="section-title">Flow Animation Type</div>
                 </div>
@@ -1172,29 +1186,6 @@
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-icon">🎮</div>
-                    <div class="section-title">Animation Settings</div>
-                </div>
-                <div class="flow-control">
-                    <label>Flow Speed: <span class="flow-control-value" id="speedValue">6</span></label>
-                    <input type="range" id="windSpeed" min="1" max="20" value="6">
-                </div>
-                <div class="flow-control">
-                    <label>Density: <span class="flow-control-value" id="densityValue">0.7</span></label>
-                    <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7">
-                </div>
-                <div class="flow-control">
-                    <label>Trail Length: <span class="flow-control-value" id="trailValue">120</span></label>
-                    <input type="range" id="windTrail" min="50" max="300" value="120">
-                </div>
-                <div class="preset-buttons">
-                    <button class="preset-btn" onclick="setWindPreset('subtle')">Subtle</button>
-                    <button class="preset-btn active" onclick="setWindPreset('normal')">Normal</button>
-                    <button class="preset-btn" onclick="setWindPreset('intense')">Intense</button>
-                </div>
-            </div>
         </div>
     </div>
 </aside>
@@ -1243,6 +1234,9 @@
       
       let fireOriginalRenderer;
       let fireHeatmapRenderer;
+
+      // NEW: Store the base definition expression for the fire layer
+      const fireBaseDefinition = "ACQ_DATE >= CURRENT_DATE - 1";
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -1513,25 +1507,22 @@
         title:"Active Fires & Thermal Hotspots (VIIRS)", opacity:0.9, visible:true,
         renderer:{ type:"simple", symbol:{ type:"simple-marker", style:"circle", size:8, color:[255,69,0,0.8], outline:{color:"yellow",width:1}}},
         popupTemplate:{ title:"🔥 Active Fire Detection", content:`<div style="line-height:1.5"><b>🔥 Fire Brightness:</b> {BRIGHT_TI4} K<br><b>📅 Detection Date:</b> {ACQ_DATE}<br><b>🕐 Detection Time:</b> {ACQ_TIME}<br><b>🛰️ Satellite:</b> {SATELLITE}<br><b>📍 Confidence:</b> {CONFIDENCE}<br><b>📍 Coordinates:</b> {LATITUDE}, {LONGITUDE}<br><b>📊 Data Source:</b> NASA VIIRS</div>` },
-        definitionExpression: "ACQ_DATE >= CURRENT_DATE - 1"
+        definitionExpression: fireBaseDefinition
       });
       map.add(fireLayer, 4);
 
       fireLayer.when(() => {
         fireOriginalRenderer = fireLayer.renderer;
-        // MODIFIED: Replaced the old heatmap renderer with one based on absolute values
         fireHeatmapRenderer = new HeatmapRenderer({
             field: "BRIGHT_TI4",
-            // The colorStops now use specific Kelvin values for precise gradation
             colorStops: [
-              { color: "rgba(254, 252, 215, 0)", value: 300 },      // Transparent below detection threshold
-              { color: "rgba(253, 224, 139, 0.8)", value: 320 }, // Low-intensity fires (yellow)
-              { color: "rgba(252, 141, 89, 0.85)", value: 350 }, // Medium-intensity (orange)
-              { color: "rgba(227, 26, 28, 0.9)", value: 400 },   // High-intensity (red)
-              { color: "rgba(150, 0, 25, 1)", value: 500 }      // Very high-intensity / Saturated
+              { color: "rgba(254, 252, 215, 0)", value: 300 },
+              { color: "rgba(253, 224, 139, 0.8)", value: 320 },
+              { color: "rgba(252, 141, 89, 0.85)", value: 350 },
+              { color: "rgba(227, 26, 28, 0.9)", value: 400 },
+              { color: "rgba(150, 0, 25, 1)", value: 500 }
             ],
             blurRadius: 12
-            // REMOVED: maxPixelIntensity and minPixelIntensity are not needed when using absolute values
         });
       });
 
@@ -1664,7 +1655,18 @@
             fireLayer.renderer = fireOriginalRenderer;
         }
       });
+      
+      // NEW: Event listener for the fire brightness slider
+      const brightnessSlider = document.getElementById("brightnessSlider");
+      const brightnessValue = document.getElementById("brightnessValue");
 
+      brightnessSlider.addEventListener("input", (event) => {
+          const minBrightness = parseInt(event.target.value);
+          brightnessValue.textContent = minBrightness;
+
+          // Combine the base date filter with the new dynamic brightness filter
+          fireLayer.definitionExpression = `${fireBaseDefinition} AND (BRIGHT_TI4 >= ${minBrightness})`;
+      });
 
       // Flow animation controls
       const setupFlowControl = (inputId, valueId, property) => {
