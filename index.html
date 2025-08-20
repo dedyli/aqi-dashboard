@@ -1090,7 +1090,6 @@
                     <li>Live stations: OpenAQ via Esri Living Atlas</li>
                     <li>World cities: Major cities worldwide</li>
                     <li>Regional AQI: Google Air Quality API</li>
-                    <li>Wind data: NLDAS Hurricane Ida (animated)</li>
                     <li>Ocean currents: Global ocean circulation (animated)</li>
                     <li>Fire data: NASA VIIRS thermal hotspots (24hr)</li>
                 </ul>
@@ -1138,16 +1137,8 @@
                     <input checked type="checkbox" id="layerFlow"/>
                 </div>
                 <div class="layer-control">
-                    <label><span>🌡️ Weather Stations</span></label>
-                    <input type="checkbox" id="layerWeatherStations"/>
-                </div>
-                <div class="layer-control">
                     <label><span>🔥 Active Fire Hotspots</span></label>
                     <input checked type="checkbox" id="layerFire"/>
-                </div>
-                <div class="layer-control">
-                    <label><span>🔥 Active Fires Heatmap</span></label>
-                    <input type="checkbox" id="layerFireHeatmap"/>
                 </div>
                 <div class="layer-control">
                     <label><span>World Cities</span></label>
@@ -1165,27 +1156,37 @@
                     <div class="section-title">Fire Intensity Filter</div>
                 </div>
                 <div class="flow-control">
-                    <label>Minimum Brightness (K): <span class="flow-control-value" id="brightnessValue">300</span></label>
-                    <input type="range" id="brightnessSlider" min="300" max="500" value="300" step="5">
+                    <label>Minimum Brightness (K): <span class="flow-control-value" id="brightnessValue">365</span></label>
+                    <input type="range" id="brightnessSlider" min="365" max="500" value="365" step="5">
                     <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5;">
-                        Adjust to show only fires above a certain intensity. Helps reveal gradation in the heatmap.
+                        Adjust to show only fires above a certain intensity. Higher values focus on more significant fires.
                     </div>
                 </div>
             </div>
 
             <div class="section-card">
                 <div class="section-header">
-                    <div class="section-icon">🌊</div>
-                    <div class="section-title">Flow Animation Type</div>
+                    <div class="section-icon">🎮</div>
+                    <div class="section-title">Animation Settings</div>
                 </div>
-                <button class="flow-type-btn active" onclick="switchFlowType('ocean')" data-type="ocean">🌊 Global Ocean Currents</button>
-                <button class="flow-type-btn" onclick="switchFlowType('wind-na')" data-type="wind-na">🌪️ North America Wind</button>
-                <button class="flow-type-btn" onclick="switchFlowType('wind-global')" data-type="wind-global">🌬️ Global Wind Field</button>
-                <div id="flowInfo">
-                    <strong>🌊 Global Ocean Currents:</strong><br>• Worldwide coverage<br>• Shows global ocean circulation<br>• Real ocean current patterns
+                <div class="flow-control">
+                    <label>Flow Speed: <span class="flow-control-value" id="speedValue">6</span></label>
+                    <input type="range" id="windSpeed" min="1" max="20" value="6">
+                </div>
+                <div class="flow-control">
+                    <label>Density: <span class="flow-control-value" id="densityValue">0.7</span></label>
+                    <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7">
+                </div>
+                <div class="flow-control">
+                    <label>Trail Length: <span class="flow-control-value" id="trailValue">120</span></label>
+                    <input type="range" id="windTrail" min="50" max="300" value="120">
+                </div>
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setWindPreset('subtle')">Subtle</button>
+                    <button class="preset-btn active" onclick="setWindPreset('normal')">Normal</button>
+                    <button class="preset-btn" onclick="setWindPreset('intense')">Intense</button>
                 </div>
             </div>
-
         </div>
     </div>
 </aside>
@@ -1222,20 +1223,14 @@
       "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
       "esri/layers/ImageryLayer","esri/layers/MapImageLayer",
       "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
-      "esri/renderers/HeatmapRenderer",
       "esri/widgets/Legend","esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, HeatmapRenderer, Legend, esriConfig) {
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, MapImageLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
 
       let googleAqiLayer = null;
       let googleAqiData = null;
-      let windLayer = null;
-      let weatherStationsLayer = null;
       let fireLayer = null;
-      
-      let fireOriginalRenderer;
-      let fireHeatmapRenderer;
+      let flowLayer = null;
 
-      // NEW: Store the base definition expression for the fire layer
       const fireBaseDefinition = "ACQ_DATE >= CURRENT_DATE - 1";
 
       const map = new Map({ basemap: "satellite" });
@@ -1244,46 +1239,6 @@
         map, center: [105, 35], zoom: 4,
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
-
-      function switchFlowType(type) {
-        globalOceanCurrentsLayer.visible = false;
-        northAmericaWindLayer.visible = false;
-        globalWindLayer.visible = false;
-        
-        document.querySelectorAll('.flow-type-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.flow-type-btn[data-type="${type}"]`).classList.add('active');
-        
-        switch(type) {
-            case 'ocean':
-                window.currentFlowLayer = globalOceanCurrentsLayer;
-                updateFlowInfo('ocean');
-                break;
-            case 'wind-na':
-                window.currentFlowLayer = northAmericaWindLayer;
-                updateFlowInfo('wind-na');
-                break;
-            case 'wind-global':
-                window.currentFlowLayer = globalWindLayer;
-                updateFlowInfo('wind-global');
-                break;
-        }
-        window.currentFlowLayer.visible = document.getElementById('layerFlow').checked;
-        windLayer = window.currentFlowLayer;
-        updateLegend();
-      }
-
-      function updateFlowInfo(type) {
-        const infoDiv = document.getElementById('flowInfo');
-        const content = {
-            'ocean': `<strong>🌊 Global Ocean Currents:</strong><br>• Worldwide coverage<br>• Shows global ocean circulation<br>• Real ocean current patterns`,
-            'wind-na': `<strong>🌪️ North America Wind:</strong><br>• Hurricane Ida data (Aug 2021)<br>• High-resolution wind patterns<br>• Dramatic storm visualization`,
-            'wind-global': `<strong>🌬️ Global Wind Field:</strong><br>• NDFD wind forecast data<br>• Limited global coverage<br>• Atmospheric wind patterns`
-        };
-        infoDiv.innerHTML = content[type] || '';
-      }
-
-      window.switchFlowType = switchFlowType;
-      window.updateFlowInfo = updateFlowInfo;
 
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
 
@@ -1448,7 +1403,7 @@
       });
       map.add(citiesLayer);
 
-      const globalOceanCurrentsLayer = new ImageryTileLayer({
+      flowLayer = new ImageryTileLayer({
         url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
         title:"Global Ocean Currents", opacity:0.8, visible:true,
         renderer: new FlowRenderer({
@@ -1460,72 +1415,16 @@
         }),
         popupTemplate:{ title:"🌊 Global Ocean Currents", content:`<div style="line-height:1.5"><b>🌊 Current Speed:</b> {Magnitude} m/s<br><b>🧭 Current Direction:</b> {Direction}°<br><b>📊 Data Source:</b> Global Ocean Current Model<br><b>🌍 Coverage:</b> Worldwide Ocean Currents</div>` }
       });
-
-      const northAmericaWindLayer = new ImageryTileLayer({
-        url:"https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly_8_30_2021/ImageServer",
-        title:"North America Wind Flow", opacity:0.85, visible:false,
-        renderer: new FlowRenderer({
-          type:"flow", density:0.6, flowSpeed:8, trailLength:150, trailWidth:"2px", maxPathLength:200,
-          visualVariables:[{ type:"color", field:"Magnitude", stops:[
-            {color:[65,150,255,0.7],value:0},{color:[100,200,255,0.8],value:3},{color:[150,255,150,0.9],value:8},
-            {color:[255,255,100,0.9],value:15},{color:[255,150,50,1],value:25},{color:[255,50,50,1],value:35}
-          ]}]
-        }),
-        popupTemplate:{ title:"🌪️ Hurricane Ida Wind Data", content:`<div style="line-height:1.5"><b>💨 Wind Speed:</b> {Magnitude} m/s<br><b>🧭 Wind Direction:</b> {Direction}°<br><b>📊 Data Source:</b> NLDAS Hourly Wind Data<br><b>🕒 Time Period:</b> Hurricane Ida (Aug 30, 2021)</div>` }
-      });
-
-      const globalWindLayer = new ImageryTileLayer({
-        url:"https://sampleserver6.arcgisonline.com/arcgis/rest/services/ScientificData/NDFD_wind/ImageServer",
-        title:"Global Wind Field", opacity:0.8, visible:false,
-        renderer: new FlowRenderer({
-          type:"flow", density:0.5, flowSpeed:5, trailLength:100, trailWidth:"1.5px", maxPathLength:150,
-          visualVariables:[{ type:"color", field:"Magnitude", stops:[
-            {color:[100,200,100,0.7],value:0},{color:[150,255,150,0.8],value:5},{color:[255,255,100,0.9],value:15},
-            {color:[255,150,50,1],value:25},{color:[255,50,50,1],value:35}
-          ]}]
-        }),
-        popupTemplate:{ title:"🌬️ Wind Field Data", content:`<div style="line-height:1.5"><b>💨 Wind Speed:</b> {Magnitude} knots<br><b>🧭 Wind Direction:</b> {Direction}°<br><b>📊 Data Source:</b> NDFD Wind Data</div>` }
-      });
-
-      map.add(globalOceanCurrentsLayer, 2);
-      map.add(northAmericaWindLayer, 2);
-      map.add(globalWindLayer, 2);
-
-      windLayer = globalOceanCurrentsLayer;
-      window.currentFlowLayer = globalOceanCurrentsLayer;
-
-      weatherStationsLayer = new FeatureLayer({
-        url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Current_Weather_and_Wind_Station_Data/FeatureServer/0",
-        title:"Weather Stations", opacity:0.7, visible:false,
-        renderer:{ type:"simple", symbol:{ type:"simple-marker", style:"triangle", size:8, color:[255,215,0,0.8], outline:{color:"white",width:1}}, visualVariables:[{type:"rotation",field:"WIND_DIRECT",rotationType:"geographic"},{type:"size",field:"WIND_SPEED",minDataValue:0,maxDataValue:50,minSize:6,maxSize:18}] },
-        popupTemplate:{ title:"🌡️ Weather Station: {STATION_NAME}", content:`<div style="line-height:1.5"><b>🌬️ Wind Speed:</b> {WIND_SPEED} km/h<br><b>🧭 Wind Direction:</b> {WIND_DIRECT}°<br><b>🌡️ Temperature:</b> {TEMP} °C<br><b>💧 Humidity:</b> {R_HUMIDITY}%<br><b>☁️ Cloud Coverage:</b> {COVERAGE}<br><b>🌈 Visibility:</b> {VISIBILITY} km<br><b>📍 Location:</b> {STATION_NAME}<br><b>🕒 Observation Time:</b> {DATE_TIME}</div>` }
-      });
-      map.add(weatherStationsLayer, 3);
+      map.add(flowLayer, 2);
 
       fireLayer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
         title:"Active Fires & Thermal Hotspots (VIIRS)", opacity:0.9, visible:true,
         renderer:{ type:"simple", symbol:{ type:"simple-marker", style:"circle", size:8, color:[255,69,0,0.8], outline:{color:"yellow",width:1}}},
         popupTemplate:{ title:"🔥 Active Fire Detection", content:`<div style="line-height:1.5"><b>🔥 Fire Brightness:</b> {BRIGHT_TI4} K<br><b>📅 Detection Date:</b> {ACQ_DATE}<br><b>🕐 Detection Time:</b> {ACQ_TIME}<br><b>🛰️ Satellite:</b> {SATELLITE}<br><b>📍 Confidence:</b> {CONFIDENCE}<br><b>📍 Coordinates:</b> {LATITUDE}, {LONGITUDE}<br><b>📊 Data Source:</b> NASA VIIRS</div>` },
-        definitionExpression: fireBaseDefinition
+        definitionExpression: `${fireBaseDefinition} AND (BRIGHT_TI4 >= 365)` // Initial filter
       });
       map.add(fireLayer, 4);
-
-      fireLayer.when(() => {
-        fireOriginalRenderer = fireLayer.renderer;
-        fireHeatmapRenderer = new HeatmapRenderer({
-            field: "BRIGHT_TI4",
-            colorStops: [
-              { color: "rgba(254, 252, 215, 0)", value: 300 },
-              { color: "rgba(253, 224, 139, 0.8)", value: 320 },
-              { color: "rgba(252, 141, 89, 0.85)", value: 350 },
-              { color: "rgba(227, 26, 28, 0.9)", value: 400 },
-              { color: "rgba(150, 0, 25, 1)", value: 500 }
-            ],
-            blurRadius: 12
-        });
-      });
-
 
       let legendWidget = null;
       function updateLegend() {
@@ -1533,8 +1432,7 @@
         const layerInfos = [];
         if (pm25Layer && pm25Layer.visible) layerInfos.push({ layer:pm25Layer, title:"PM2.5 (μg/m³) – Live Stations" });
         if (googleAqiLayer && googleAqiLayer.visible) layerInfos.push({ layer:googleAqiLayer, title:"Cities (Google AQI)" });
-        if (window.currentFlowLayer && window.currentFlowLayer.visible) layerInfos.push({ layer:window.currentFlowLayer, title:"🌊 Animated Flow" });
-        if (weatherStationsLayer && weatherStationsLayer.visible) layerInfos.push({ layer:weatherStationsLayer, title:"🌡️ Weather Stations" });
+        if (flowLayer && flowLayer.visible) layerInfos.push({ layer:flowLayer, title:"🌊 Animated Flow" });
         if (fireLayer && fireLayer.visible) layerInfos.push({ layer:fireLayer, title:"Active Fires & Thermal Hotspots (VIIRS)" });
         legendWidget.layerInfos = layerInfos;
       }
@@ -1640,31 +1538,17 @@
       // Layer controls
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; updateLegend(); });
-      document.getElementById("layerFlow").addEventListener("change", e => { if (window.currentFlowLayer) window.currentFlowLayer.visible = e.target.checked; updateLegend(); });
-      document.getElementById("layerWeatherStations").addEventListener("change", e => { if (weatherStationsLayer) weatherStationsLayer.visible = e.target.checked; updateLegend(); });
+      document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; updateLegend(); });
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
       
-      document.getElementById("layerFireHeatmap").addEventListener("change", e => {
-        if (e.target.checked) {
-            fireLayer.renderer = fireHeatmapRenderer;
-            document.getElementById("layerFire").checked = true;
-            fireLayer.visible = true;
-        } else {
-            fireLayer.renderer = fireOriginalRenderer;
-        }
-      });
-      
-      // NEW: Event listener for the fire brightness slider
       const brightnessSlider = document.getElementById("brightnessSlider");
       const brightnessValue = document.getElementById("brightnessValue");
 
       brightnessSlider.addEventListener("input", (event) => {
           const minBrightness = parseInt(event.target.value);
           brightnessValue.textContent = minBrightness;
-
-          // Combine the base date filter with the new dynamic brightness filter
           fireLayer.definitionExpression = `${fireBaseDefinition} AND (BRIGHT_TI4 >= ${minBrightness})`;
       });
 
@@ -1675,8 +1559,8 @@
           input.addEventListener("input", function() {
               const value = this.type === 'range' && this.step === '0.1' ? parseFloat(this.value) : parseInt(this.value);
               valueDisplay.textContent = value;
-              if (window.currentFlowLayer?.renderer?.type === "flow") {
-                  window.currentFlowLayer.renderer[property] = value;
+              if (flowLayer?.renderer?.type === "flow") {
+                  flowLayer.renderer[property] = value;
               }
           });
       };
@@ -1716,8 +1600,8 @@
     });
 
     function setWindPreset(preset) {
-        if (!window.currentFlowLayer?.renderer?.type === "flow") return;
-        const renderer = window.currentFlowLayer.renderer;
+        if (!window.flowLayer?.renderer?.type === "flow") return;
+        const renderer = window.flowLayer.renderer;
         
         document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`.preset-btn[onclick="setWindPreset('${preset}')"]`).classList.add('active');
