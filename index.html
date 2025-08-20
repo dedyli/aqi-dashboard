@@ -5,7 +5,73 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Global Air Quality Intelligence Platform</title>
 <link href="https://js.arcgis.com/4.29/esri/themes/light/main.css" rel="stylesheet"/>
-<script src="https://js.arcgis.com/4.29/"></script>
+<script src="https://js.arcgis.com/4.29/">
+// === ULTRA LUXURY ENHANCEMENTS ===
+(function(){
+  if (window.__luxuryEnhancementsApplied) return;
+  window.__luxuryEnhancementsApplied = true;
+
+  // Entrance animation for cards and headers
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.section-card').forEach((el, i) => {
+      el.style.animationDelay = (i * 90) + 'ms';
+      el.classList.add('lux-enter');
+    });
+  });
+
+  // Mascot parallax tilt (non-intrusive)
+  const mascot = document.getElementById('mascotBtn');
+  if (mascot){
+    const reset = () => mascot.style.transform = '';
+    mascot.addEventListener('mousemove', (e) => {
+      const r = mascot.getBoundingClientRect();
+      const x = (e.clientX - (r.left + r.width/2)) / r.width;
+      const y = (e.clientY - (r.top + r.height/2)) / r.height;
+      mascot.style.transform = `rotateX(${(-y*6).toFixed(2)}deg) rotateY(${(x*6).toFixed(2)}deg) scale(1.05)`;
+    });
+    mascot.addEventListener('mouseleave', reset);
+    mascot.addEventListener('dragend', reset);
+  }
+
+  // Animated counters (requires window.pm25Layer / window.googleAqiData / window.fireLayer)
+  function animateNumber(el, to, duration=1200){
+    if (!el) return;
+    const from = 0;
+    const start = performance.now();
+    function frame(t){
+      const p = Math.min(1, (t - start) / duration);
+      const val = Math.floor(from + (to - from) * (0.5 - 0.5*Math.cos(Math.PI*p))); // ease-in-out
+      el.textContent = val.toLocaleString();
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function updateCounters(){
+    const stationsEl = document.querySelector('[data-stat="stations"]');
+    const citiesEl = document.querySelector('[data-stat="cities"]');
+    const firesEl = document.querySelector('[data-stat="fires"]');
+
+    try{
+      if (stationsEl && window.pm25Layer && typeof window.pm25Layer.queryFeatureCount === 'function'){
+        window.pm25Layer.queryFeatureCount().then(c => animateNumber(stationsEl, c || 0));
+      }
+      if (citiesEl){
+        const n = (window.googleAqiData && Array.isArray(window.googleAqiData.features)) ? window.googleAqiData.features.length : 0;
+        animateNumber(citiesEl, n);
+      }
+      if (firesEl && window.fireLayer && typeof window.fireLayer.queryFeatureCount === 'function'){
+        window.fireLayer.queryFeatureCount().then(c => animateNumber(firesEl, c || 0));
+      }
+    }catch(e){ /* silent */ }
+  }
+
+  setTimeout(updateCounters, 2500);
+  setInterval(updateCounters, 5 * 60 * 1000); // refresh every 5 min
+
+})();
+
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -1451,8 +1517,102 @@
         border-radius: 4px;
     }
 </style>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* === ULTRA LUXURY ADD-ONS (non-breaking) === */
+:root{
+  --lux-gold-foil: linear-gradient(135deg, #f9e6b3 0%, #e5c86d 35%, #b68a2a 65%, #f1d78a 100%);
+  --lux-ink: #d1d5ff;
+}
+/* Animated premium heading */
+.header-text h1{
+  font-family: "Playfair Display", serif;
+  letter-spacing: -0.6px;
+  background: linear-gradient(90deg, #ffffff, #f7f3da, #e7d188, #ffffff);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: luxTitleShimmer 18s linear infinite;
+}
+@keyframes luxTitleShimmer{
+  0%{ background-position: 0% 50%; }
+  50%{ background-position: 100% 50%; }
+  100%{ background-position: 0% 50%; }
+}
+
+/* Backdrop premium glow layer */
+#luxuryBackdrop{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500; /* below header (1001), above map default */
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(102,126,234,0.08), transparent 60%),
+    radial-gradient(1000px 600px at 110% 120%, rgba(212,175,55,0.07), transparent 60%),
+    radial-gradient(800px 500px at 50% 120%, rgba(79,172,254,0.05), transparent 60%);
+  mix-blend-mode: screen;
+}
+/* Soft moving light sheen */
+#luxuryBackdrop::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(1000px 600px at var(--x,30%) var(--y,20%), rgba(255,255,255,0.08), transparent 60%);
+  animation: floatGlow 20s ease-in-out infinite alternate;
+}
+@keyframes floatGlow{
+  0%{ --x: 30%; --y: 20%; opacity: 0.7; }
+  50%{ --x: 70%; --y: 50%; opacity: 0.9; }
+  100%{ --x: 40%; --y: 70%; opacity: 0.75; }
+}
+
+/* Entrance motion for cards/sections */
+.lux-enter{
+  opacity: 0;
+  transform: translateY(14px) scale(0.995);
+  animation: luxEnter 700ms var(--ease-luxury) forwards;
+}
+@keyframes luxEnter{
+  to{ opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Deluxe stat badges */
+.stat-card .stat-value{
+  background: var(--lux-gold-foil);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(212,175,55,0.15);
+}
+
+/* Mascot 3D tilt illusion */
+#mascotBtn{
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Typing indicator (can be reused by backend) */
+.typing{
+  display: inline-flex; gap: 6px; align-items: center;
+}
+.typing .dot{
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.8);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+.typing .dot:nth-child(2){ animation-delay: .15s; }
+.typing .dot:nth-child(3){ animation-delay: .3s; }
+@keyframes bounce{
+  0%, 80%, 100%{ transform: translateY(0); opacity: 0.6;}
+  40%{ transform: translateY(-6px); opacity: 1; }
+}
+</style>
+
 </head>
 <body>
+<div id="luxuryBackdrop" aria-hidden="true"></div>
 
 <div class="header">
     <div class="header-left">
@@ -1541,6 +1701,33 @@
                 </div>
             </div>
         </div>
+
+
+            <div class="section-card" id="globalSnapshot">
+                <div class="section-header">
+                    <div class="section-icon">💎</div>
+                    <div class="section-title">Global Snapshot</div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="stations">0</div>
+                        <div class="stat-label">Live Stations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="cities">0</div>
+                        <div class="stat-label">Cities Monitored</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="fires">0</div>
+                        <div class="stat-label">Active Fires (24h)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">🌊</div>
+                        <div class="stat-label">Ocean Currents</div>
+                    </div>
+                </div>
+            </div>
+
 
         <div class="tab-panel" id="settingsPanel">
             <div class="section-card">
@@ -1775,8 +1962,10 @@
           const response = await fetch('/.netlify/functions/google-aqi');
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           googleAqiData = await response.json();
+          window.googleAqiData = googleAqiData;
           if (googleAqiData.warning) console.warn("API Warning:", googleAqiData.warning);
           googleAqiLayer = createGoogleAqiLayer(googleAqiData);
+          window.googleAqiLayer = googleAqiLayer;
           map.add(googleAqiLayer, 1);
           await googleAqiLayer.load();
           toast("✅ Google AQI data loaded!");
@@ -1833,7 +2022,7 @@
         ]}
       });
       map.add(pm25Layer);
-
+      window.pm25Layer = pm25Layer;
       const citiesLayer = new FeatureLayer({
         url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0",
         title:"World Cities", definitionExpression:"POP > 100000",
@@ -1857,7 +2046,7 @@
         popupTemplate:{ title:"🌊 Global Ocean Currents", content:`<div style="line-height:1.5"><b>🌊 Current Speed:</b> {Magnitude} m/s<br><b>🧭 Current Direction:</b> {Direction}°<br><b>📊 Data Source:</b> Global Ocean Current Model<br><b>🌍 Coverage:</b> Worldwide Ocean Currents</div>` }
       });
       map.add(flowLayer, 2);
-
+      window.flowLayer = flowLayer;
       fireLayer = new FeatureLayer({
         url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
         title:"Active Fires & Thermal Hotspots (VIIRS)", opacity:0.9, visible:true,
@@ -1866,7 +2055,7 @@
         definitionExpression: `${fireBaseDefinition} AND (BRIGHT_TI4 >= 365)` // Initial filter
       });
       map.add(fireLayer, 4);
-
+      window.fireLayer = fireLayer;
       let legendWidget = null;
       function updateLegend() {
         if (!legendWidget) return;
