@@ -1241,7 +1241,6 @@
       let weatherStationsLayer = null;
       let fireLayer = null;
       
-      // NEW: Variables for fire layer heatmap functionality
       let fireOriginalRenderer;
       let fireHeatmapRenderer;
 
@@ -1518,22 +1517,21 @@
       });
       map.add(fireLayer, 4);
 
-      // NEW: Define heatmap functionality for the fire layer
       fireLayer.when(() => {
         fireOriginalRenderer = fireLayer.renderer;
+        // MODIFIED: Replaced the old heatmap renderer with one based on absolute values
         fireHeatmapRenderer = new HeatmapRenderer({
-            field: "BRIGHT_TI4", // Intensity based on brightness temperature
+            field: "BRIGHT_TI4",
+            // The colorStops now use specific Kelvin values for precise gradation
             colorStops: [
-              { color: "rgba(255, 237, 160, 0)", ratio: 0 },
-              { color: "rgba(255, 237, 160, 0.7)", ratio: 0.1 },
-              { color: "rgba(254, 204, 92, 0.75)", ratio: 0.3 },
-              { color: "rgba(253, 141, 60, 0.8)", ratio: 0.5 },
-              { color: "rgba(240, 59, 32, 0.85)", ratio: 0.75 },
-              { color: "rgba(189, 0, 38, 1)", ratio: 1 }
+              { color: "rgba(254, 252, 215, 0)", value: 300 },      // Transparent below detection threshold
+              { color: "rgba(253, 224, 139, 0.8)", value: 320 }, // Low-intensity fires (yellow)
+              { color: "rgba(252, 141, 89, 0.85)", value: 350 }, // Medium-intensity (orange)
+              { color: "rgba(227, 26, 28, 0.9)", value: 400 },   // High-intensity (red)
+              { color: "rgba(150, 0, 25, 1)", value: 500 }      // Very high-intensity / Saturated
             ],
-            blurRadius: 8,
-            maxPixelIntensity: 50,
-            minPixelIntensity: 0
+            blurRadius: 12
+            // REMOVED: maxPixelIntensity and minPixelIntensity are not needed when using absolute values
         });
       });
 
@@ -1657,7 +1655,6 @@
       document.getElementById("layerCities").addEventListener("change", e => citiesLayer.visible = e.target.checked);
       document.getElementById("layerLegend").addEventListener("change", e => { if(legendWidget) legendWidget.visible = e.target.checked; });
       
-      // NEW: Event listener for the FIRE heatmap toggle
       document.getElementById("layerFireHeatmap").addEventListener("change", e => {
         if (e.target.checked) {
             fireLayer.renderer = fireHeatmapRenderer;
