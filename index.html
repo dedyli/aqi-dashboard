@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Global Air Quality Intelligence Platform [V5 Final]</title>
+<title>Global Air Quality Intelligence Platform</title>
 <link href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" rel="stylesheet"/>
 <script src="https://js.arcgis.com/4.29/"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +25,7 @@
 
 
         /* Sizing & Radius */
+        --header-height: 72px;
         --radius: 12px;
         --padding: 20px;
         
@@ -73,6 +74,41 @@
         pointer-events: none; /* Pass clicks through to the map */
     }
 
+    /* --- NEW HEADER --- */
+    .main-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--header-height);
+        z-index: 15;
+        display: flex;
+        align-items: center;
+        padding: 0 32px;
+        background-color: var(--panel-bg);
+        backdrop-filter: blur(16px) saturate(120%);
+        border-bottom: 1px solid var(--panel-border);
+        pointer-events: auto;
+    }
+    .header-logo {
+        font-size: 32px;
+        margin-right: 20px;
+        line-height: 1;
+    }
+    .header-title h1 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+    }
+    .header-title h2 {
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--text-secondary);
+        opacity: 0.8;
+    }
+
+
     /* --- FLOATING PANELS --- */
     .floating-panel {
         position: absolute;
@@ -100,6 +136,7 @@
     .floating-panel.active {
         border-color: var(--panel-border-active);
         box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
+        z-index: 16 !important; /* Ensure active panel is above header */
     }
     
     .floating-panel.active .panel-header::before { /* Shimmer on active panel */
@@ -370,16 +407,24 @@
 </head>
 <body>
 
+<header class="main-header">
+    <div class="header-logo">🌍</div>
+    <div class="header-title">
+        <h1>Global Air Quality Intelligence Platform</h1>
+        <h2>Group 62 Tsinghua IEDE program - AI Driven Air Quality Monitoring for the Green Economy</h2>
+    </div>
+</header>
+
 <div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
 
 <div id="uiContainer">
-    <div class="floating-panel visible" id="panel-explorer" style="width: 380px; height: 500px; top: 20px; left: 20px;">
+    <div class="floating-panel visible" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
         <div class="panel-header"> <span class="panel-icon">🔍</span> <span class="panel-title">Data Explorer</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content"> <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> <button class="search-btn" id="searchBtn">Analyze Location</button> <div id="googleAqiList" style="margin-top: 20px;"></div> </div>
         <div class="panel-aurora"></div>
     </div>
         
-    <div class="floating-panel visible" id="panel-critical" style="width: 360px; height: 450px; top: 20px; right: 20px;">
+    <div class="floating-panel visible" id="panel-critical" style="width: 360px; height: 450px; top: calc(var(--header-height) + 16px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🏭</span> <span class="panel-title">Critical AQ Zones</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content" id="topCities"></div>
         <div class="panel-aurora"></div>
@@ -391,17 +436,17 @@
         <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-settings" style="width: 360px; height: auto; top: 520px; left: 20px;">
+    <div class="floating-panel" id="panel-settings" style="width: 360px; height: auto; top: calc(var(--header-height) + 16px); left: 420px;">
          <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
          <div class="panel-content">
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
-            <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">300</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="300" step="1"> </div> </div>
+            <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
             <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
          </div>
          <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: 600px; top: 480px; right: 20px;">
+    <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: 600px; top: calc(var(--header-height) + 480px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Legend</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content" id="legend-container"></div>
         <div class="panel-aurora"></div>
@@ -422,7 +467,7 @@
         const panels = document.querySelectorAll('.floating-panel');
         const dockBtns = document.querySelectorAll('.dock-btn');
         let activePanel = null;
-        let highestZ = 10;
+        let highestZ = 15;
 
         function setActive(panel) {
             if (activePanel) activePanel.classList.remove('active');
@@ -541,7 +586,7 @@
       flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
       map.add(flowLayer);
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 300` });
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
       map.add(fireLayer);
       
       view.when(() => {
