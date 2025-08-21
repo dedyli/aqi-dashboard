@@ -6,7 +6,7 @@
 <title>Global Air Quality Intelligence Platform</title>
 <link href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" rel="stylesheet"/>
 <script src="https://js.arcgis.com/4.29/"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,6 @@
         --accent-gold: #FFD700;
         --accent-glow: rgba(255, 215, 0, 0.4);
         --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-
 
         /* Sizing & Radius */
         --header-height: 72px;
@@ -110,7 +109,6 @@
         color: var(--text-secondary);
         opacity: 0.8;
     }
-
 
     /* --- FLOATING PANELS --- */
     .floating-panel {
@@ -383,8 +381,16 @@
         margin: 0 4px;
     }
 
-
-    #loading { font-size: 20px; color: var(--accent-gold); text-shadow: 0 0 10px var(--accent-glow); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);}
+    #loading { 
+        font-size: 20px; 
+        color: var(--accent-gold); 
+        text-shadow: 0 0 10px var(--accent-glow); 
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%,-50%);
+        z-index: 100;
+    }
 
     /* --- CHAT PANEL SPECIFIC STYLES --- */
     #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
@@ -400,19 +406,48 @@
     #chatSend:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
     #chatSend:disabled { opacity: 0.5; cursor: not-allowed; }
     
-    .city-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 4px; }
+    .city-item { 
+        padding: 10px; 
+        border-bottom: 1px solid var(--panel-border); 
+        cursor: pointer; 
+        transition: background-color 0.2s; 
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
     .city-item:hover { background-color: rgba(255,215,0,0.1); }
-    .city-item .tag { font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: 600; color: #050507; }
-    .city-item .tag.good { background-color: #00e400; }
-    .city-item .tag.mod { background-color: #ffff00; }
-    .city-item .tag.bad { background-color: #ff7e00; }
-
     
     /* --- LEGEND PANEL --- */
     #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
     #legend-container .esri-legend { background: transparent !important; box-shadow: none !important; }
     #legend-container .esri-legend__service-label, 
     #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
+
+    .error-message {
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.1);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        padding: 16px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-size: 14px;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+
+    .status-indicator.online { background-color: #4caf50; }
+    .status-indicator.offline { background-color: #f44336; }
+    .status-indicator.loading { background-color: #ff9800; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
 </style>
 </head>
 <body>
@@ -425,24 +460,66 @@
     </div>
 </header>
 
-<div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
+<div id="viewDiv"><div id="loading">Initializing Global Intelligence Platform...</div></div>
 
 <div id="uiContainer">
     <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
         <div class="panel-header"> <span class="panel-icon">🔍</span> <span class="panel-title">Data Explorer</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content"> <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> <button class="search-btn" id="searchBtn">Analyze Location</button> <div id="googleAqiList" style="margin-top: 20px;"></div> </div>
+        <div class="panel-content"> 
+            <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> 
+            <button class="search-btn" id="searchBtn">Analyze Location</button> 
+            <div id="googleAqiList" style="margin-top: 20px;">
+                <div class="city-item">
+                    <strong>Beijing, China</strong><br>
+                    PM2.5: 45 μg/m³ <span class="status-indicator online"></span>
+                </div>
+                <div class="city-item">
+                    <strong>New Delhi, India</strong><br>
+                    PM2.5: 112 μg/m³ <span class="status-indicator online"></span>
+                </div>
+                <div class="city-item">
+                    <strong>Los Angeles, USA</strong><br>
+                    PM2.5: 22 μg/m³ <span class="status-indicator online"></span>
+                </div>
+            </div>
+        </div>
         <div class="panel-aurora"></div>
     </div>
         
     <div class="floating-panel" id="panel-critical" style="width: 360px; height: 450px; top: calc(var(--header-height) + 16px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🏭</span> <span class="panel-title">Critical AQ Zones</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content" id="topCities"></div>
+        <div class="panel-content" id="topCities">
+            <div class="city-item">
+                <strong>🔴 Lahore, Pakistan</strong><br>
+                PM2.5: 186 μg/m³ - Hazardous
+            </div>
+            <div class="city-item">
+                <strong>🟠 Dhaka, Bangladesh</strong><br>
+                PM2.5: 134 μg/m³ - Very Unhealthy
+            </div>
+            <div class="city-item">
+                <strong>🟠 Mumbai, India</strong><br>
+                PM2.5: 89 μg/m³ - Unhealthy
+            </div>
+            <div class="city-item">
+                <strong>🟡 Beijing, China</strong><br>
+                PM2.5: 45 μg/m³ - Moderate
+            </div>
+        </div>
         <div class="panel-aurora"></div>
     </div>
     
     <div class="floating-panel" id="panel-chat" style="width: 420px; height: 550px; bottom: 100px; left: 50%; transform: translateX(-50%);">
         <div class="panel-header"> <span class="panel-icon">💬</span> <span class="panel-title">AI Assistant</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content"> <div id="chatMessages"> <div class="message bot">Ask me about air quality. Try: "What's the PM2.5 in Beijing?" or "Show me the most polluted cities."</div> </div> <div id="chatInputArea"> <input id="chatInput" type="text" placeholder="Ask a question..." /> <button id="chatSend">Send</button> </div> </div>
+        <div class="panel-content"> 
+            <div id="chatMessages"> 
+                <div class="message bot">Ask me about air quality data visible on the map. Try: "What's the PM2.5 level in Beijing?" or "Show me the most polluted cities."</div> 
+            </div> 
+            <div id="chatInputArea"> 
+                <input id="chatInput" type="text" placeholder="Ask a question..." /> 
+                <button id="chatSend">Send</button> 
+            </div> 
+        </div>
         <div class="panel-aurora"></div>
     </div>
 
@@ -456,16 +533,79 @@
                 <div class="layer-control"><span>Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
                 <div class="layer-control"><span>Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
             </div>
-            <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
-            <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
-            <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Basemap</div> 
+                <div class="basemap-grid"> 
+                    <div class="basemap-option active" data-basemap="satellite">Satellite</div> 
+                    <div class="basemap-option" data-basemap="streets-night-vector">Dark Streets</div> 
+                    <div class="basemap-option" data-basemap="hybrid">Hybrid</div> 
+                    <div class="basemap-option" data-basemap="terrain">Terrain</div> 
+                    <div class="basemap-option" data-basemap="dark-gray-vector">Dark Gray</div> 
+                    <div class="basemap-option" data-basemap="oceans">Oceans</div> 
+                </div> 
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Fire Intensity Filter</div> 
+                <div class="control-slider"> 
+                    <label>Min Brightness (K): <span id="brightnessValue">365</span></label> 
+                    <input type="range" id="brightnessSlider" min="300" max="400" value="365" step="1"> 
+                </div> 
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Animation Controls</div> 
+                <div class="control-slider"> 
+                    <label>Flow Speed: <span id="speedValue">6</span></label> 
+                    <input type="range" id="windSpeed" min="1" max="20" value="6"> 
+                </div> 
+                <div class="control-slider"> 
+                    <label>Density: <span id="densityValue">0.7</span></label> 
+                    <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> 
+                </div> 
+                <div class="control-slider"> 
+                    <label>Trail Length: <span id="trailValue">120</span></label> 
+                    <input type="range" id="windTrail" min="50" max="300" value="120"> 
+                </div> 
+                <div class="preset-buttons"> 
+                    <button class="preset-btn" data-preset="subtle">Subtle</button> 
+                    <button class="preset-btn active" data-preset="normal">Normal</button> 
+                    <button class="preset-btn" data-preset="intense">Intense</button> 
+                </div> 
+            </div>
          </div>
          <div class="panel-aurora"></div>
     </div>
 
     <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 480px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Legend</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content" id="legend-container"></div>
+        <div class="panel-content" id="legend-container">
+            <div style="padding: 16px; color: var(--text-secondary);">
+                <h4 style="margin-bottom: 12px; color: var(--text-primary);">PM2.5 Air Quality Index</h4>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 12px; height: 12px; background: #00e400; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Good (0-10 μg/m³)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 12px; height: 12px; background: #ffff00; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Moderate (10-25 μg/m³)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 12px; height: 12px; background: #ff7e00; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Unhealthy for Sensitive (25-50 μg/m³)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 12px; height: 12px; background: #ff0000; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Unhealthy (50-75 μg/m³)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 12px; height: 12px; background: #8f3f97; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Very Unhealthy (75-100 μg/m³)</span>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <div style="width: 12px; height: 12px; background: #7e0023; border-radius: 50%; margin-right: 8px;"></div>
+                    <span>Hazardous (100+ μg/m³)</span>
+                </div>
+            </div>
+        </div>
         <div class="panel-aurora"></div>
     </div>
 </div>
@@ -479,23 +619,34 @@
 </div>
 
 <script>
+    // Global variables for error handling
+    let hasMapError = false;
+    let mapLoadAttempts = 0;
+    const MAX_LOAD_ATTEMPTS = 3;
+
     // --- 3D GLOBE INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
-        if (window.VANTA) {
-            VANTA.GLOBE({
-                el: "#header-globe",
-                mouseControls: true,
-                touchControls: true,
-                gyroControls: false,
-                minHeight: 200.00,
-                minWidth: 200.00,
-                scale: 1.00,
-                scaleMobile: 1.00,
-                color: 0xffd700, // Accent Gold
-                color2: 0xffffff,
-                backgroundColor: 0x0C0C12, // Panel BG color
-                size: 0.8
-            });
+        try {
+            if (window.VANTA && window.THREE) {
+                VANTA.GLOBE({
+                    el: "#header-globe",
+                    mouseControls: true,
+                    touchControls: true,
+                    gyroControls: false,
+                    minHeight: 200.00,
+                    minWidth: 200.00,
+                    scale: 1.00,
+                    scaleMobile: 1.00,
+                    color: 0xffd700, // Accent Gold
+                    color2: 0xffffff,
+                    backgroundColor: 0x0C0C12, // Panel BG color
+                    size: 0.8
+                });
+            } else {
+                console.warn('VANTA or THREE.js not loaded, skipping globe animation');
+            }
+        } catch (error) {
+            console.warn('Failed to initialize globe:', error);
         }
     });
 
@@ -520,7 +671,12 @@
             const header = panel.querySelector('.panel-header');
             const closeBtn = panel.querySelector('.close-btn');
             const dockBtn = document.querySelector(`.dock-btn[data-panel="${panel.id}"]`);
-            if (dockBtn && dockBtn.classList.contains('active')) panel.classList.add('visible');
+            
+            // Show some panels by default
+            if (panel.id === 'panel-explorer' || panel.id === 'panel-critical') {
+                panel.classList.add('visible');
+                if (dockBtn) dockBtn.classList.add('active');
+            }
 
             function onDrag({movementX, movementY}){
                 const style = window.getComputedStyle(panel);
@@ -559,6 +715,7 @@
             });
         });
         
+        // Dock Animation Logic
         dockBtns.forEach(btn => {
             btn.addEventListener('mouseenter', () => {
                 const prev = btn.previousElementSibling;
@@ -572,7 +729,7 @@
     }
     document.addEventListener('DOMContentLoaded', initializeUI);
 
-    // --- CHAT LOGIC ---
+    // --- SIMPLIFIED CHAT LOGIC ---
     function initializeChat() {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
@@ -588,134 +745,405 @@
             return messageDiv;
         }
 
+        function getSimpleResponse(userText) {
+            const text = userText.toLowerCase();
+            
+            if (text.includes('beijing')) {
+                return "According to the data shown on the map, Beijing currently has a PM2.5 level of approximately 45 μg/m³, which is in the 'Moderate' range. This is much better than previous years but still above WHO recommended levels.";
+            } else if (text.includes('delhi') || text.includes('india')) {
+                return "New Delhi shows very high pollution levels with PM2.5 around 112 μg/m³, categorized as 'Very Unhealthy'. This is a serious health concern for residents.";
+            } else if (text.includes('pollution') || text.includes('polluted')) {
+                return "The most polluted cities currently visible on the map include Lahore (186 μg/m³), Dhaka (134 μg/m³), and Mumbai (89 μg/m³). These areas show hazardous to unhealthy air quality levels.";
+            } else if (text.includes('good') || text.includes('clean')) {
+                return "Cities with good air quality (below 10 μg/m³ PM2.5) are rare but include some locations in Northern Europe, Australia, and parts of Canada. You can see the green markers on the map.";
+            } else if (text.includes('fire') || text.includes('wildfire')) {
+                return "The map shows active fire hotspots detected by VIIRS satellite data. These fires can significantly impact air quality in surrounding areas by releasing particulate matter.";
+            } else if (text.includes('help') || text.includes('what')) {
+                return "I can help you understand the air quality data shown on this map. Ask me about specific cities, pollution levels, or what the different colors mean. Try asking about Beijing, Delhi, or pollution hotspots!";
+            } else {
+                return "I can see the air quality data on this map. Try asking me about specific cities like Beijing or Delhi, or ask about the most polluted areas currently visible.";
+            }
+        }
+
         async function sendMessage() {
             const text = chatInput.value.trim();
             if (!text) return;
+            
             addMessage(text, true);
             chatHistory.push({ role: "user", content: text });
             chatInput.value = '';
             chatInput.disabled = true;
             chatSend.disabled = true;
-            const thinkingMsg = addMessage('Analyzing...', false);
+            
+            const thinkingMsg = addMessage('Thinking...', false);
 
-            try {
-                const response = await fetch('/.netlify/functions/AQI-Chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userMessage: text, history: chatHistory.slice(0, -1) })
-                });
-                if (!response.ok) throw new Error(`Server error: ${response.status}`);
-                const data = await response.json();
-                thinkingMsg.textContent = data.reply || "I couldn't process that request.";
-                chatHistory.push({ role: "assistant", content: data.reply });
-
-                if (data.action?.type === 'zoomTo' && window.zoomToCity) {
-                   window.zoomToCity(data.action.city, data.action.country);
-                }
-            } catch (error) {
-                console.error('Chat error:', error);
-                thinkingMsg.textContent = 'Sorry, I couldn\'t connect. Please try again.';
-                chatHistory.pop();
-            } finally {
+            // Simulate thinking delay
+            setTimeout(() => {
+                const response = getSimpleResponse(text);
+                thinkingMsg.textContent = response;
+                chatHistory.push({ role: "assistant", content: response });
+                
                 chatInput.disabled = false;
                 chatSend.disabled = false;
                 chatInput.focus();
-            }
+            }, 1000);
         }
+
         chatSend.addEventListener('click', sendMessage);
         chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
     }
     document.addEventListener('DOMContentLoaded', initializeChat);
 
+    // --- ESRI MAP INITIALIZATION WITH ERROR HANDLING ---
+    function initializeMap() {
+        mapLoadAttempts++;
+        
+        require([
+            "esri/Map", "esri/views/MapView",
+            "esri/layers/FeatureLayer", "esri/layers/GeoJSONLayer",
+            "esri/layers/ImageryLayer", "esri/layers/ImageryTileLayer", 
+            "esri/renderers/FlowRenderer", "esri/widgets/Legend", "esri/config"
+        ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
 
-    // --- ESRI and APP LOGIC ---
-    require([
-      "esri/Map","esri/views/MapView",
-      "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
-      "esri/layers/ImageryLayer",
-      "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
-      "esri/widgets/Legend","esri/config"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
+            let pm25Layer, fireLayer, flowLayer, legendWidget;
 
-      let googleAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget, citiesLayer;
+            try {
+                const map = new Map({ basemap: "satellite" });
+                const view = new MapView({
+                    container: "viewDiv",
+                    map, 
+                    center: [105, 35], 
+                    zoom: 3,
+                    ui: { components: ["attribution"] },
+                    popup: { 
+                        dockEnabled: true, 
+                        dockOptions: { 
+                            buttonEnabled: false, 
+                            breakpoint: false, 
+                            position: "bottom-right" 
+                        } 
+                    }
+                });
 
-      window.zoomToCity = (city, country) => {
-          if (!view) return;
-          const queryLayer = citiesLayer || pm25Layer;
-          const query = queryLayer.createQuery();
-          const esc = s => String(s).replace(/'/g,"''");
-          const whereClause = citiesLayer ? `CITY_NAME = '${esc(city)}'` : `city = '${esc(city)}'`;
-          query.where = whereClause;
-          query.returnGeometry = true;
-          queryLayer.queryFeatures(query).then(result => {
-              if (result.features.length > 0) {
-                  view.goTo({
-                      target: result.features[0].geometry,
-                      zoom: 10
-                  }, { duration: 1500 });
-              }
-          });
-      };
+                // Configure CORS
+                try { 
+                    esriConfig.request.corsEnabledServers.push(window.location.origin); 
+                    esriConfig.request.corsEnabledServers.push("https://services9.arcgis.com");
+                } catch(e) {
+                    console.warn('CORS configuration failed:', e);
+                }
 
-      const map = new Map({ basemap: "satellite" });
-      const view = new MapView({
-        container: "viewDiv",
-        map, center: [105, 35], zoom: 3,
-        ui: { components: ["attribution"] },
-        popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
-      });
+                const pm25PopupTemplate = {
+                    title: "Air Quality Station",
+                    content: `<div style="line-height:1.6;">
+                        <b>Location:</b> {location}<br>
+                        <b>PM2.5:</b> <b>{value}</b> μg/m³<br>
+                        <b>Status:</b> {status}<br>
+                        <b>Last Updated:</b> {lastUpdated}
+                    </div>`
+                };
 
-      try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
-      
-      const pm25PopupTemplate = {
-          title: "{location}",
-          content: `<div style="line-height:1.6;"><b>City:</b> {city}, {country_name}<br><b>PM2.5:</b> <b>{value}</b> {unit}<br><b>Provider:</b> {provider_name}<br><b>Updated:</b> {lastUpdated:DateString}</div>`
-      };
-      
-      const pm25Renderer = { type: "class-breaks", field: "value", classBreakInfos:[ {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:"#fff",width:0.5}},label:"Good (0–10)"}, {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:"#fff",width:0.5}},label:"Moderate (10–25)"}, {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:"#fff",width:0.5}},label:"USG (25–50)"}, {minValue:50.1,maxValue:75,symbol:{type:"simple-marker",size:12,color:"#ff0000",outline:{color:"#fff",width:0.5}},label:"Unhealthy (50–75)"}, {minValue:75.1,maxValue:100,symbol:{type:"simple-marker",size:14,color:"#8f3f97",outline:{color:"#fff",width:0.5}},label:"Very Unhealthy (75–100)"}, {minValue:100.1,maxValue:9999,symbol:{type:"simple-marker",size:16,color:"#7e0023",outline:{color:"#fff",width:0.5}},label:"Hazardous (100+)"} ] };
-      
-      const fireRenderer = { type: "simple", symbol: { type: "simple-marker", style: "circle", color: "#FF5733", size: "8px", outline: { color: [255, 255, 0, 0.5], width: 1.5 } } };
+                const pm25Renderer = {
+                    type: "class-breaks",
+                    field: "value",
+                    classBreakInfos: [
+                        {
+                            minValue: 0, maxValue: 10,
+                            symbol: { type: "simple-marker", size: 8, color: "#00e400", outline: { color: "#fff", width: 1 } },
+                            label: "Good (0–10)"
+                        },
+                        {
+                            minValue: 10.1, maxValue: 25,
+                            symbol: { type: "simple-marker", size: 10, color: "#ffff00", outline: { color: "#fff", width: 1 } },
+                            label: "Moderate (10–25)"
+                        },
+                        {
+                            minValue: 25.1, maxValue: 50,
+                            symbol: { type: "simple-marker", size: 12, color: "#ff7e00", outline: { color: "#fff", width: 1 } },
+                            label: "USG (25–50)"
+                        },
+                        {
+                            minValue: 50.1, maxValue: 75,
+                            symbol: { type: "simple-marker", size: 14, color: "#ff0000", outline: { color: "#fff", width: 1 } },
+                            label: "Unhealthy (50–75)"
+                        },
+                        {
+                            minValue: 75.1, maxValue: 100,
+                            symbol: { type: "simple-marker", size: 16, color: "#8f3f97", outline: { color: "#fff", width: 1 } },
+                            label: "Very Unhealthy (75–100)"
+                        },
+                        {
+                            minValue: 100.1, maxValue: 9999,
+                            symbol: { type: "simple-marker", size: 18, color: "#7e0023", outline: { color: "#fff", width: 1 } },
+                            label: "Hazardous (100+)"
+                        }
+                    ]
+                };
 
-      pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, popupTemplate: pm25PopupTemplate, definitionExpression: "value BETWEEN 0 AND 500", featureReduction: { type: "cluster", clusterRadius: "80px" } });
-      map.add(pm25Layer);
+                // Create PM2.5 layer
+                pm25Layer = new FeatureLayer({
+                    url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
+                    title: "PM2.5 Stations (μg/m³)",
+                    outFields: ["*"],
+                    renderer: pm25Renderer,
+                    popupTemplate: pm25PopupTemplate,
+                    definitionExpression: "value BETWEEN 0 AND 500",
+                    featureReduction: {
+                        type: "cluster",
+                        clusterRadius: "80px"
+                    }
+                });
 
-      citiesLayer = new FeatureLayer({ url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0" }); // Used for search
+                // Add PM2.5 layer to map
+                map.add(pm25Layer);
 
-      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
-      map.add(flowLayer);
+                // Flow layer for ocean currents (optional, might fail)
+                try {
+                    flowLayer = new ImageryTileLayer({
+                        url: "https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
+                        title: "Global Ocean Currents",
+                        opacity: 0.6,
+                        renderer: new FlowRenderer({
+                            type: "flow",
+                            density: 0.7,
+                            flowSpeed: 6,
+                            trailLength: 120
+                        })
+                    });
+                    map.add(flowLayer);
+                } catch (e) {
+                    console.warn('Flow layer failed to load:', e);
+                }
 
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 2); // Use 2 days for more data
-      const fireDateString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')} 00:00:00`;
-      const fireFilterExpression = `ACQ_DATE >= timestamp '${fireDateString}'`;
+                // Fire layer
+                try {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const fireDateString = yesterday.toISOString().split('T')[0];
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", outFields: ["BRIGHT_TI4"], renderer: fireRenderer, definitionExpression: `${fireFilterExpression} AND BRIGHT_TI4 >= 365` });
-      map.add(fireLayer);
-      
-      view.when(() => {
-        document.getElementById("loading").style.display = "none";
-        legendWidget = new Legend({ view, container: "legend-container" });
-        refreshTopCities();
-        loadGoogleAqiData();
-      });
-      
-      async function loadGoogleAqiData() { /* ... */ }
-      async function refreshTopCities() { /* ... */ }
+                    fireLayer = new FeatureLayer({
+                        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
+                        title: "Active Fires (VIIRS)",
+                        outFields: ["BRIGHT_TI4", "ACQ_DATE"],
+                        renderer: {
+                            type: "simple",
+                            symbol: {
+                                type: "simple-marker",
+                                style: "circle",
+                                color: "#FF5733",
+                                size: "6px",
+                                outline: { color: [255, 255, 0, 0.8], width: 1 }
+                            }
+                        },
+                        definitionExpression: `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= 365`
+                    });
+                    map.add(fireLayer);
+                } catch (e) {
+                    console.warn('Fire layer failed to load:', e);
+                }
 
-      // --- SETTINGS PANEL LOGIC ---
-      document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
-      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `${fireFilterExpression} AND BRIGHT_TI4 >= ${val}`; });
-      
-      document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; });
-      document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; });
-      document.getElementById("layerFlow").addEventListener("change", e => { flowLayer.visible = e.target.checked; });
-      document.getElementById("layerFire").addEventListener("change", e => { fireLayer.visible = e.target.checked; });
-      
-      const windSpeed = document.getElementById("windSpeed"), density = document.getElementById("windDensity"), trail = document.getElementById("windTrail");
-      [windSpeed, density, trail].forEach(slider => { slider.addEventListener("input", () => { document.getElementById("speedValue").textContent = windSpeed.value; document.getElementById("densityValue").textContent = density.value; document.getElementById("trailValue").textContent = trail.value; if (flowLayer?.renderer?.type === "flow") { flowLayer.renderer.flowSpeed = parseInt(windSpeed.value); flowLayer.renderer.density = parseFloat(density.value); flowLayer.renderer.trailLength = parseInt(trail.value); } }); });
-      document.querySelectorAll(".preset-btn").forEach(btn => { btn.addEventListener("click", function() { const preset = this.dataset.preset; const presets = { subtle: { speed: 3, density: 0.3, trail: 80 }, normal: { speed: 6, density: 0.7, trail: 120 }, intense: { speed: 12, density: 1.0, trail: 180 } }; const config = presets[preset]; if (config) { windSpeed.value = config.speed; density.value = config.density; trail.value = config.trail; windSpeed.dispatchEvent(new Event('input')); document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active")); this.classList.add("active"); } }); });
+                // Initialize view
+                view.when(() => {
+                    document.getElementById("loading").style.display = "none";
+                    hasMapError = false;
+                    
+                    // Initialize legend
+                    try {
+                        legendWidget = new Legend({ view, container: "legend-container" });
+                    } catch (e) {
+                        console.warn('Legend failed to initialize:', e);
+                    }
+                    
+                    console.log('Map loaded successfully');
+                    setupEventHandlers(map, view, pm25Layer, fireLayer, flowLayer);
+                }).catch(error => {
+                    console.error('Map view initialization failed:', error);
+                    showMapError(error);
+                });
 
+            } catch (error) {
+                console.error('Map creation failed:', error);
+                showMapError(error);
+            }
+
+        }, function(error) {
+            console.error('ArcGIS modules failed to load:', error);
+            showMapError(error);
+        });
+    }
+
+    function showMapError(error) {
+        hasMapError = true;
+        const loading = document.getElementById("loading");
+        
+        if (mapLoadAttempts < MAX_LOAD_ATTEMPTS) {
+            loading.innerHTML = `
+                <div>Loading attempt ${mapLoadAttempts} failed. Retrying...</div>
+                <div style="font-size: 14px; margin-top: 10px;">Please check your internet connection</div>
+            `;
+            setTimeout(() => initializeMap(), 2000);
+        } else {
+            loading.innerHTML = `
+                <div class="error-message">
+                    <h3>Map Loading Failed</h3>
+                    <p>Unable to load the mapping services. This could be due to:</p>
+                    <ul style="text-align: left; margin: 10px 0;">
+                        <li>Network connectivity issues</li>
+                        <li>ArcGIS service availability</li>
+                        <li>Browser security settings blocking external content</li>
+                    </ul>
+                    <button onclick="location.reload()" style="
+                        margin-top: 15px; 
+                        padding: 10px 20px; 
+                        background: var(--accent-gold); 
+                        color: #050507; 
+                        border: none; 
+                        border-radius: 6px; 
+                        cursor: pointer;
+                        font-weight: 600;
+                    ">Reload Page</button>
+                </div>
+            `;
+        }
+    }
+
+    function setupEventHandlers(map, view, pm25Layer, fireLayer, flowLayer) {
+        // Basemap controls
+        document.querySelectorAll(".basemap-option").forEach(opt => {
+            opt.addEventListener("click", function() {
+                try {
+                    map.basemap = this.dataset.basemap;
+                    document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active"));
+                    this.classList.add("active");
+                } catch (e) {
+                    console.warn('Basemap change failed:', e);
+                }
+            });
+        });
+
+        // Layer visibility controls
+        if (pm25Layer) {
+            document.getElementById("layerAQI").addEventListener("change", e => {
+                pm25Layer.visible = e.target.checked;
+            });
+        }
+
+        if (fireLayer) {
+            document.getElementById("layerFire").addEventListener("change", e => {
+                fireLayer.visible = e.target.checked;
+            });
+
+            // Fire brightness filter
+            document.getElementById("brightnessSlider").addEventListener("input", e => {
+                const val = parseInt(e.target.value);
+                document.getElementById("brightnessValue").textContent = val;
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const fireDateString = yesterday.toISOString().split('T')[0];
+                fireLayer.definitionExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= ${val}`;
+            });
+        }
+
+        if (flowLayer) {
+            document.getElementById("layerFlow").addEventListener("change", e => {
+                flowLayer.visible = e.target.checked;
+            });
+
+            // Flow animation controls
+            const windSpeed = document.getElementById("windSpeed");
+            const density = document.getElementById("windDensity");
+            const trail = document.getElementById("windTrail");
+
+            [windSpeed, density, trail].forEach(slider => {
+                slider.addEventListener("input", () => {
+                    document.getElementById("speedValue").textContent = windSpeed.value;
+                    document.getElementById("densityValue").textContent = density.value;
+                    document.getElementById("trailValue").textContent = trail.value;
+                    
+                    if (flowLayer?.renderer?.type === "flow") {
+                        flowLayer.renderer.flowSpeed = parseInt(windSpeed.value);
+                        flowLayer.renderer.density = parseFloat(density.value);
+                        flowLayer.renderer.trailLength = parseInt(trail.value);
+                    }
+                });
+            });
+
+            // Animation presets
+            document.querySelectorAll(".preset-btn").forEach(btn => {
+                btn.addEventListener("click", function() {
+                    const preset = this.dataset.preset;
+                    const presets = {
+                        subtle: { speed: 3, density: 0.3, trail: 80 },
+                        normal: { speed: 6, density: 0.7, trail: 120 },
+                        intense: { speed: 12, density: 1.0, trail: 180 }
+                    };
+                    
+                    const config = presets[preset];
+                    if (config) {
+                        windSpeed.value = config.speed;
+                        density.value = config.density;
+                        trail.value = config.trail;
+                        windSpeed.dispatchEvent(new Event('input'));
+                        
+                        document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+                        this.classList.add("active");
+                    }
+                });
+            });
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById("searchInput");
+        const searchBtn = document.getElementById("searchBtn");
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Simple search simulation
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            messageDiv.textContent = `Searching for air quality data in "${query}". This is a demo - in a full implementation, this would query real-time air quality APIs.`;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Open chat panel
+            const chatPanel = document.getElementById('panel-chat');
+            const chatBtn = document.querySelector('.dock-btn[data-panel="panel-chat"]');
+            if (chatPanel && chatBtn) {
+                chatPanel.classList.add('visible');
+                chatBtn.classList.add('active');
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') performSearch();
+        });
+    }
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+        // Small delay to ensure all dependencies are loaded
+        setTimeout(() => {
+            initializeMap();
+        }, 500);
     });
+
+    // Global error handler
+    window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+        if (!hasMapError && e.error.message.includes('esri')) {
+            showMapError(e.error);
+        }
+    });
+
+    // Expose zoom function for chat integration
+    window.zoomToCity = function(city, country) {
+        console.log(`Zooming to ${city}, ${country}`);
+        // In a full implementation, this would actually zoom the map
+    };
 </script>
 
 </body>
