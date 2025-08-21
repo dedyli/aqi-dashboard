@@ -476,28 +476,154 @@
 <script>
     // --- 3D GLOBE INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
-        VANTA.GLOBE({
-            el: "#header-globe",
-            mouseControls: true,
-            touchControls: true,
-            gyroControls: false,
-            minHeight: 200.00,
-            minWidth: 200.00,
-            scale: 1.00,
-            scaleMobile: 1.00,
-            color: 0xffd700, // Accent Gold
-            color2: 0xffffff,
-            backgroundColor: 0x0C0C12, // Panel BG color
-            size: 0.8
-        });
+        if (window.VANTA) {
+            VANTA.GLOBE({
+                el: "#header-globe",
+                mouseControls: true,
+                touchControls: true,
+                gyroControls: false,
+                minHeight: 200.00,
+                minWidth: 200.00,
+                scale: 1.00,
+                scaleMobile: 1.00,
+                color: 0xffd700, // Accent Gold
+                color2: 0xffffff,
+                backgroundColor: 0x0C0C12, // Panel BG color
+                size: 0.8
+            });
+        }
     });
 
     // --- DYNAMIC PANEL & DOCK LOGIC ---
-    function initializeUI() { /* ... full UI logic from previous version ... */ }
+    function initializeUI() {
+        const panels = document.querySelectorAll('.floating-panel');
+        const dockBtns = document.querySelectorAll('.dock-btn');
+        let activePanel = null;
+        let highestZ = 15;
+
+        function setActive(panel) {
+            if (activePanel) activePanel.classList.remove('active');
+            if (panel) {
+                highestZ++;
+                panel.style.zIndex = highestZ;
+                panel.classList.add('active');
+            }
+            activePanel = panel;
+        }
+        
+        panels.forEach(panel => {
+            const header = panel.querySelector('.panel-header');
+            const closeBtn = panel.querySelector('.close-btn');
+            const dockBtn = document.querySelector(`.dock-btn[data-panel="${panel.id}"]`);
+            if (dockBtn && dockBtn.classList.contains('active')) panel.classList.add('visible');
+
+            function onDrag({movementX, movementY}){
+                const style = window.getComputedStyle(panel);
+                const matrix = new DOMMatrix(style.transform);
+                panel.style.left = `${parseInt(style.left) + matrix.m41 + movementX}px`;
+                panel.style.top = `${parseInt(style.top) + matrix.m42 + movementY}px`;
+                panel.style.transform = '';
+            }
+
+            header.addEventListener('mousedown', () => {
+                setActive(panel);
+                header.addEventListener('mousemove', onDrag);
+            });
+
+            document.addEventListener('mouseup', () => header.removeEventListener('mousemove', onDrag));
+            panel.addEventListener('mousedown', () => setActive(panel));
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    panel.classList.remove('visible');
+                    if(dockBtn) dockBtn.classList.remove('active');
+                });
+            }
+        });
+        
+        dockBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const panelId = btn.dataset.panel;
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    btn.classList.toggle('active');
+                    panel.classList.toggle('visible');
+                    if (panel.classList.contains('visible')) setActive(panel);
+                }
+            });
+        });
+        
+        // Dock Animation Logic
+        dockBtns.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                const prev = btn.previousElementSibling;
+                if (prev) prev.classList.add('prev');
+            });
+            btn.addEventListener('mouseleave', () => {
+                const prev = btn.previousElementSibling;
+                if (prev) prev.classList.remove('prev');
+            });
+        });
+        
+        // No active panel by default
+        // setActive(document.getElementById('panel-explorer')); 
+    }
     document.addEventListener('DOMContentLoaded', initializeUI);
 
     // --- CHAT LOGIC ---
-    function initializeChat() { /* ... full chat logic from previous version ... */ }
+    function initializeChat() {
+        const chatInput = document.getElementById('chatInput');
+        const chatSend = document.getElementById('chatSend');
+        const chatMessages = document.getElementById('chatMessages');
+        let chatHistory = [];
+
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            addMessage(text, true);
+            chatHistory.push({ role: "user", content: text });
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSend.disabled = true;
+            const thinkingMsg = addMessage('Analyzing...', false);
+
+            try {
+                const response = await fetch('/.netlify/functions/AQI-Chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMessage: text, history: chatHistory.slice(0, -1) })
+                });
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const data = await response.json();
+                thinkingMsg.textContent = data.reply || "I couldn't process that request.";
+                chatHistory.push({ role: "assistant", content: data.reply });
+
+                if (data.action?.type === 'zoomTo' && window.zoomToCity) {
+                   window.zoomToCity(data.action.city, data.action.country);
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                thinkingMsg.textContent = 'Sorry, I couldn\'t connect. Please try again.';
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSend.disabled = false;
+                chatInput.focus();
+            }
+        }
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    }
     document.addEventListener('DOMContentLoaded', initializeChat);
 
 
@@ -537,7 +663,12 @@
       flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
       map.add(flowLayer);
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", outFields: ["BRIGHT_TI4"], renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const fireDateString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')} ${String(yesterday.getHours()).padStart(2, '0')}:${String(yesterday.getMinutes()).padStart(2, '0')}:${String(yesterday.getSeconds()).padStart(2, '0')}`;
+      const fireFilterExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= 365`;
+
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", outFields: ["BRIGHT_TI4"], renderer: fireRenderer, definitionExpression: fireFilterExpression });
       map.add(fireLayer);
       
       view.when(() => {
@@ -552,7 +683,7 @@
 
       // --- SETTINGS PANEL LOGIC ---
       document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
-      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= ${val}`; });
+      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= ${val}`; });
       
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; });
