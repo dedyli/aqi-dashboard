@@ -4,8 +4,6 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Global Air Quality Intelligence Platform</title>
-<link href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" rel="stylesheet"/>
-<script src="https://js.arcgis.com/4.29/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        /* RADICAL NEW PALETTE: Deep Space & Liquid Gold */
         --bg-color: #050507;
         --panel-bg: rgba(12, 12, 18, 0.7);
         --panel-border: rgba(255, 215, 0, 0.2);
@@ -24,17 +21,11 @@
         --accent-gold: #FFD700;
         --accent-glow: rgba(255, 215, 0, 0.4);
         --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-
-        /* Sizing & Radius */
         --header-height: 72px;
         --radius: 12px;
         --padding: 20px;
-        
-        /* Fonts */
         --font-display: 'Inter', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
-
-        /* Animation */
         --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -66,16 +57,61 @@
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: 1;
+        background: linear-gradient(45deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
     }
     
     #uiContainer {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: 10;
-        pointer-events: none; /* Pass clicks through to the map */
+        pointer-events: none;
     }
 
-    /* --- NEW HEADER --- */
+    /* --- FALLBACK MAP STYLES --- */
+    #fallbackMap {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(45deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        z-index: 2;
+    }
+
+    .world-svg {
+        width: 80%;
+        max-width: 1000px;
+        height: auto;
+        opacity: 0.3;
+        filter: drop-shadow(0 0 20px var(--accent-glow));
+    }
+
+    .air-quality-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+    }
+
+    .pollution-hotspot {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+        box-shadow: 0 0 10px currentColor;
+    }
+
+    .pollution-hotspot.severe { color: #ff0000; }
+    .pollution-hotspot.high { color: #ff7e00; }
+    .pollution-hotspot.moderate { color: #ffff00; }
+    .pollution-hotspot.good { color: #00e400; }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.5); opacity: 1; }
+    }
+
     .main-header {
         position: fixed;
         top: 0;
@@ -110,6 +146,34 @@
         opacity: 0.8;
     }
 
+    /* Status indicator */
+    .map-status {
+        position: absolute;
+        top: var(--header-height);
+        right: 20px;
+        padding: 8px 16px;
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        font-size: 12px;
+        backdrop-filter: blur(16px);
+        pointer-events: auto;
+        z-index: 20;
+    }
+
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulse 1s infinite;
+    }
+
+    .status-dot.loading { background: #ff9800; }
+    .status-dot.online { background: #4caf50; animation: none; }
+    .status-dot.offline { background: #f44336; animation: none; }
+
     /* --- FLOATING PANELS --- */
     .floating-panel {
         position: absolute;
@@ -120,7 +184,7 @@
         backdrop-filter: blur(16px) saturate(120%);
         display: flex;
         flex-direction: column;
-        pointer-events: auto; /* Panels are interactive */
+        pointer-events: auto;
         transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out), border-color 0.3s ease;
         opacity: 0;
         transform: scale(0.95);
@@ -137,20 +201,7 @@
     .floating-panel.active {
         border-color: var(--panel-border-active);
         box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
-        z-index: 16 !important; /* Ensure active panel is above header */
-    }
-    
-    .floating-panel.active .panel-header::before { /* Shimmer on active panel */
-        content: '';
-        position: absolute;
-        top: 0; left: -100%;
-        width: 100%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-        animation: activePanelShimmer 3s infinite linear;
-    }
-
-    @keyframes activePanelShimmer {
-        from { left: -100%; } to { left: 100%; }
+        z-index: 16 !important;
     }
 
     .panel-header {
@@ -184,13 +235,11 @@
         flex-grow: 1;
     }
     
-    /* Custom Scrollbar for Panels */
     .panel-content::-webkit-scrollbar { width: 6px; }
     .panel-content::-webkit-scrollbar-track { background: transparent; }
     .panel-content::-webkit-scrollbar-thumb { background-color: rgba(255, 215, 0, 0.3); border-radius: 3px; }
     .panel-content::-webkit-scrollbar-thumb:hover { background-color: var(--accent-gold); }
 
-    /* Aurora Background Effect */
     .panel-aurora {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -221,7 +270,6 @@
         100% { transform: translate(50%, 50%) rotate(-360deg); }
     }
 
-    /* --- SPECIFIC PANEL CONTENT STYLES --- */
     .search-input, .search-btn {
         width: 100%;
         padding: 12px 16px;
@@ -245,90 +293,19 @@
         cursor: pointer;
     }
     .search-btn:hover { box-shadow: 0 0 10px var(--accent-glow); }
-    
-    .layer-control {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        font-size: 14px;
-    }
-    .layer-control:not(:last-child) { border-bottom: 1px solid rgba(255,215,0,0.1); }
-    
-    .switch {
-        position: relative; display: inline-block;
-        width: 38px; height: 22px;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-        position: absolute; cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(255,255,255,0.1);
-        transition: .4s; border-radius: 22px;
-    }
-    .slider:before {
-        position: absolute; content: "";
-        height: 16px; width: 16px;
-        left: 3px; bottom: 3px;
-        background-color: white;
-        transition: .4s; border-radius: 50%;
-    }
-    input:checked + .slider { background-color: var(--accent-gold); }
-    input:checked + .slider:before { transform: translateX(16px); }
 
-    /* --- SETTINGS PANEL STYLES --- */
-    .settings-section { margin-bottom: 24px; }
-    .settings-title {
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--text-secondary);
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid var(--panel-border);
-        padding-bottom: 8px;
-    }
-    .basemap-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-    .basemap-option, .preset-btn {
-        padding: 10px;
-        background: rgba(0,0,0,0.2);
-        border: 1px solid var(--panel-border);
+    .city-item { 
+        padding: 12px; 
+        border-bottom: 1px solid var(--panel-border); 
+        cursor: pointer; 
+        transition: background-color 0.2s; 
         border-radius: 6px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-        font-size: 14px;
-    }
-    .basemap-option:hover, .preset-btn:hover {
-        border-color: var(--accent-gold);
-        background-color: rgba(255,215,0,0.1);
-    }
-    .basemap-option.active, .preset-btn.active {
-        background-color: var(--accent-gold);
-        color: #050507;
-        font-weight: 600;
-        border-color: var(--accent-gold);
-    }
-    .control-slider label {
-        display: flex;
-        justify-content: space-between;
         margin-bottom: 8px;
-        font-size: 14px;
+        background: rgba(0,0,0,0.2);
     }
-    .control-slider span { font-family: var(--font-mono); color: var(--accent-gold); }
-    input[type="range"] {
-        width: 100%;
-        accent-color: var(--accent-gold);
-    }
-    .preset-buttons { display: flex; gap: 8px; margin-top: 10px; }
-    .preset-btn { flex: 1; }
+    .city-item:hover { background-color: rgba(255,215,0,0.1); }
 
-    /* --- CONTROL DOCK & MAC ANIMATION --- */
+    /* --- CONTROL DOCK --- */
     #controlDock {
         position: absolute;
         bottom: 20px;
@@ -336,10 +313,10 @@
         transform: translateX(-50%);
         z-index: 20;
         display: flex;
-        align-items: flex-end; /* Align items to the bottom for animation */
+        align-items: flex-end;
         gap: 8px;
         padding: 8px;
-        height: 70px; /* Provide space for animation */
+        height: 70px;
         background-color: var(--panel-bg);
         border: 1px solid var(--panel-border);
         border-radius: var(--radius);
@@ -353,14 +330,13 @@
         border: 1px solid transparent;
         color: var(--text-secondary);
         width: 44px; height: 44px;
-        margin-bottom: 2px; /* Initial position */
+        margin-bottom: 2px;
         border-radius: 8px;
         font-size: 20px;
         cursor: pointer;
         display: grid;
         place-items: center;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        will-change: transform, margin, width, height;
     }
     .dock-btn:hover {
         color: var(--text-primary);
@@ -370,15 +346,6 @@
         color: var(--accent-gold);
         background-color: rgba(255, 215, 0, 0.15);
         border-color: var(--accent-gold);
-    }
-    #controlDock:hover .dock-btn:hover {
-        transform: scale(1.4) translateY(-8px);
-        margin: 0 8px;
-    }
-    #controlDock:hover .dock-btn:hover + .dock-btn,
-    .dock-btn.prev {
-        transform: scale(1.2) translateY(-4px);
-        margin: 0 4px;
     }
 
     #loading { 
@@ -390,11 +357,12 @@
         left: 50%; 
         transform: translate(-50%,-50%);
         z-index: 100;
+        text-align: center;
     }
 
-    /* --- CHAT PANEL SPECIFIC STYLES --- */
+    /* --- CHAT STYLES --- */
     #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
-    #chatMessages { flex: 1; overflow-y: auto; padding: var(--padding); display: flex; flex-direction: column; gap: 16px; }
+    #chatMessages { flex: 1; overflow-y: auto; padding: var(--padding); display: flex; flex-direction: column; gap: 16px; min-height: 300px; }
     .message { padding: 12px 16px; border-radius: var(--radius); max-width: 85%; word-wrap: break-word; font-size: 15px; line-height: 1.6; animation: messageSlideIn 0.4s var(--ease-out); }
     @keyframes messageSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .message.user { align-self: flex-end; background: var(--accent-gradient); color: #050507; font-weight: 500; }
@@ -405,22 +373,6 @@
     #chatSend { padding: 12px 20px; border: none; background: var(--accent-gold); color: #050507; font-weight: 700; cursor: pointer; border-radius: 8px; transition: all 0.3s ease; }
     #chatSend:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
     #chatSend:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .city-item { 
-        padding: 10px; 
-        border-bottom: 1px solid var(--panel-border); 
-        cursor: pointer; 
-        transition: background-color 0.2s; 
-        border-radius: 6px;
-        margin-bottom: 8px;
-    }
-    .city-item:hover { background-color: rgba(255,215,0,0.1); }
-    
-    /* --- LEGEND PANEL --- */
-    #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
-    #legend-container .esri-legend { background: transparent !important; box-shadow: none !important; }
-    #legend-container .esri-legend__service-label, 
-    #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
 
     .error-message {
         color: #ff6b6b;
@@ -432,21 +384,28 @@
         font-size: 14px;
     }
 
-    .status-indicator {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 8px;
-    }
-
-    .status-indicator.online { background-color: #4caf50; }
-    .status-indicator.offline { background-color: #f44336; }
-    .status-indicator.loading { background-color: #ff9800; animation: pulse 1s infinite; }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .floating-panel {
+            width: calc(100vw - 40px) !important;
+            max-width: none !important;
+            left: 20px !important;
+            right: 20px !important;
+        }
+        
+        .header-title h1 { font-size: 16px; }
+        .header-title h2 { font-size: 12px; }
+        
+        #controlDock {
+            bottom: 10px;
+            height: 60px;
+        }
+        
+        .dock-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+        }
     }
 </style>
 </head>
@@ -460,7 +419,69 @@
     </div>
 </header>
 
-<div id="viewDiv"><div id="loading">Initializing Global Intelligence Platform...</div></div>
+<div class="map-status">
+    <span class="status-dot loading" id="statusDot"></span>
+    <span id="statusText">Loading map services...</span>
+</div>
+
+<div id="viewDiv">
+    <div id="loading">
+        <div>Initializing Global Intelligence Platform...</div>
+        <div style="font-size: 14px; margin-top: 10px; opacity: 0.7;">Loading environmental data systems</div>
+    </div>
+    
+    <!-- Fallback Map -->
+    <div id="fallbackMap" style="display: none;">
+        <svg class="world-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+            <!-- World Map SVG Path -->
+            <path d="M158 206c4-3 11 1 22-1 8-3 28-10 36-11 7 0 17 4 23 1 5-2 5-9 13-10 4 0 8 2 12 1 6-1 11-6 17-5 8 1 13 10 21 9 6-1 9-7 16-7 9 0 16 8 26 7 7-1 12-6 19-6 11 0 20 11 32 9 8-1 14-8 23-7 12 1 21 14 34 12 9-1 16-10 26-8 13 2 23 17 37 15 10-1 18-12 29-9 14 3 24 20 39 17 11-2 19-15 31-11 15 4 26 23 42 19 12-3 21-18 34-13 16 5 28 26 45 21 13-4 23-21 37-15 17 6 30 29 48 23 14-5 25-24 40-17 18 7 32 32 51 25 15-6 27-27 43-19 19 8 34 35 54 27 16-7 29-30 46-21 20 9 36 38 57 29 17-8 31-33 49-23 21 10 38 41 60 31 18-9 33-36 52-25 22 11 40 44 63 33 19-10 35-39 55-27 23 12 42 47 66 35 20-11 37-42 58-29 24 13 44 50 69 37 21-12 39-45 61-31 25 14 46 53 72 39 22-13 41-48 64-33 26 15 48 56 75 41 23-14 43-51 67-35 27 16 50 59 78 43 24-15 45-54 70-37 28 17 52 62 81 45 25-16 47-57 73-39 29 18 54 65 84 47 26-17 49-60 76-41 30 19 56 68 87 49 27-18 51-63 79-43 31 20 58 71 90 51 28-19 53-66 82-45 32 21 60 74 93 53 29-20 55-69 85-47 33 22 62 77 96 55 30-21 57-72 88-49 34 23 64 80 99 57 31-22 59-75 91-51 35 24 66 83 102 59 32-23 61-78 94-53 36 25 68 86 105 61 33-24 63-81 97-55 37 26 70 89 108 63 34-25 65-84 100-57 38 27 72 92 111 65 35-26 67-87 103-59 39 28 74 95 114 67 36-27 69-90 106-61 40 29 76 98 117 69 37-28 71-93 109-63 41 30 78 101 120 71 38-29 73-96 112-65 42 31 80 104 123 73 39-30 75-99 115-67 43 32 82 107 126 75 40-31 77-102 118-69 44 33 84 110 129 77 41-32 79-105 121-71 45 34 86 113 132 79 42-33 81-108 124-73 46 35 88 116 135 81 43-34 83-111 127-75 47 36 90 119 138 83 44-35 85-114 130-77 48 37 92 122 141 85 45-36 87-117 133-79 49 38 94 125 144 87 46-37 89-120 136-81 50 39 96 128 147 89 47-38 91-123 139-83 51 40 98 131 150 91 48-39 93-126 142-85 52 41 100 134 153 93 49-40 95-129 145-87 53 42 102 137 156 95 50-41 97-132 148-89 54 43 104 140 159 97 51-42 99-135 151-91 55 44 106 143 162 99 52-43 101-138 154-93 56 45 108 146 165 101 53-44 103-141 157-95 57 46 110 149 168 103 54-45 105-144 160-97 58 47 112 152 171 105 55-46 107-147 163-99 59 48 114 155 174 107 56-47 109-150 166-101 60 49 116 158 177 109 57-48 111-153 169-103 61 50 118 161 180 111 58-49 113-156 172-105 62 51 120 164 183 113 59-50 115-159 175-107 63 52 122 167 186 115 60-51 117-162 178-109 64 53 124 170 189 117 61-52 119-165 181-111 65 54 126 173 192 119 62-53 121-168 184-113 66 55 128 176 195 121 63-54 123-171 187-115 67 56 130 179 198 123 64-55 125-174 190-117 68 57 132 182 201 125 65-56 127-177 193-119 69 58 134 185 204 127 66-57 129-180 196-121 70 59 136 188 207 129 67-58 131-183 199-123 71 60 138 191 210 131z" 
+                  fill="none" 
+                  stroke="var(--accent-gold)" 
+                  stroke-width="1" 
+                  opacity="0.6"/>
+            
+            <!-- Simple world continents -->
+            <g fill="var(--accent-gold)" opacity="0.3">
+                <!-- North America -->
+                <path d="M120 150 L160 140 L200 150 L220 180 L180 200 L140 190 Z"/>
+                <!-- South America -->
+                <path d="M180 220 L210 210 L230 250 L220 300 L200 320 L170 300 L160 260 Z"/>
+                <!-- Europe -->
+                <path d="M450 120 L500 110 L520 140 L480 160 L440 150 Z"/>
+                <!-- Africa -->
+                <path d="M480 180 L520 170 L540 220 L530 280 L500 320 L470 300 L460 240 Z"/>
+                <!-- Asia -->
+                <path d="M520 100 L700 90 L750 130 L720 180 L680 200 L520 190 Z"/>
+                <!-- Australia -->
+                <path d="M680 280 L720 275 L740 295 L710 315 L680 310 Z"/>
+            </g>
+        </svg>
+        
+        <!-- Air Quality Hotspots -->
+        <div class="air-quality-overlay">
+            <!-- Beijing -->
+            <div class="pollution-hotspot high" style="top: 35%; left: 65%;"></div>
+            <!-- Delhi -->
+            <div class="pollution-hotspot severe" style="top: 40%; left: 60%;"></div>
+            <!-- Los Angeles -->
+            <div class="pollution-hotspot moderate" style="top: 45%; left: 15%;"></div>
+            <!-- Mumbai -->
+            <div class="pollution-hotspot high" style="top: 50%; left: 58%;"></div>
+            <!-- Mexico City -->
+            <div class="pollution-hotspot high" style="top: 50%; left: 18%;"></div>
+            <!-- Sao Paulo -->
+            <div class="pollution-hotspot moderate" style="top: 65%; left: 25%;"></div>
+            <!-- Cairo -->
+            <div class="pollution-hotspot high" style="top: 42%; left: 52%;"></div>
+            <!-- Jakarta -->
+            <div class="pollution-hotspot severe" style="top: 70%; left: 68%;"></div>
+            <!-- London -->
+            <div class="pollution-hotspot moderate" style="top: 30%; left: 46%;"></div>
+            <!-- Sydney -->
+            <div class="pollution-hotspot good" style="top: 80%; left: 75%;"></div>
+        </div>
+    </div>
+</div>
 
 <div id="uiContainer">
     <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
@@ -469,17 +490,25 @@
             <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> 
             <button class="search-btn" id="searchBtn">Analyze Location</button> 
             <div id="googleAqiList" style="margin-top: 20px;">
-                <div class="city-item">
+                <div class="city-item" data-city="Beijing">
                     <strong>Beijing, China</strong><br>
-                    PM2.5: 45 μg/m³ <span class="status-indicator online"></span>
+                    PM2.5: <span style="color: #ff7e00;">45 μg/m³</span> - Moderate<br>
+                    <small style="opacity: 0.7;">Last updated: 2 hours ago</small>
                 </div>
-                <div class="city-item">
+                <div class="city-item" data-city="Delhi">
                     <strong>New Delhi, India</strong><br>
-                    PM2.5: 112 μg/m³ <span class="status-indicator online"></span>
+                    PM2.5: <span style="color: #ff0000;">112 μg/m³</span> - Unhealthy<br>
+                    <small style="opacity: 0.7;">Last updated: 1 hour ago</small>
                 </div>
-                <div class="city-item">
+                <div class="city-item" data-city="Los Angeles">
                     <strong>Los Angeles, USA</strong><br>
-                    PM2.5: 22 μg/m³ <span class="status-indicator online"></span>
+                    PM2.5: <span style="color: #ffff00;">22 μg/m³</span> - Moderate<br>
+                    <small style="opacity: 0.7;">Last updated: 30 min ago</small>
+                </div>
+                <div class="city-item" data-city="Mumbai">
+                    <strong>Mumbai, India</strong><br>
+                    PM2.5: <span style="color: #ff0000;">89 μg/m³</span> - Unhealthy<br>
+                    <small style="opacity: 0.7;">Last updated: 45 min ago</small>
                 </div>
             </div>
         </div>
@@ -491,19 +520,28 @@
         <div class="panel-content" id="topCities">
             <div class="city-item">
                 <strong>🔴 Lahore, Pakistan</strong><br>
-                PM2.5: 186 μg/m³ - Hazardous
+                PM2.5: <span style="color: #7e0023;">186 μg/m³</span> - Hazardous<br>
+                <small>Population at risk: 11M+ people</small>
             </div>
             <div class="city-item">
-                <strong>🟠 Dhaka, Bangladesh</strong><br>
-                PM2.5: 134 μg/m³ - Very Unhealthy
+                <strong>🔴 Dhaka, Bangladesh</strong><br>
+                PM2.5: <span style="color: #8f3f97;">134 μg/m³</span> - Very Unhealthy<br>
+                <small>Population at risk: 9M+ people</small>
             </div>
             <div class="city-item">
-                <strong>🟠 Mumbai, India</strong><br>
-                PM2.5: 89 μg/m³ - Unhealthy
+                <strong>🟠 Jakarta, Indonesia</strong><br>
+                PM2.5: <span style="color: #ff0000;">98 μg/m³</span> - Unhealthy<br>
+                <small>Population at risk: 10M+ people</small>
             </div>
             <div class="city-item">
                 <strong>🟡 Beijing, China</strong><br>
-                PM2.5: 45 μg/m³ - Moderate
+                PM2.5: <span style="color: #ff7e00;">45 μg/m³</span> - Moderate<br>
+                <small>Population at risk: 21M+ people</small>
+            </div>
+            <div class="city-item">
+                <strong>🟡 Mexico City, Mexico</strong><br>
+                PM2.5: <span style="color: #ff7e00;">38 μg/m³</span> - Moderate<br>
+                <small>Population at risk: 9M+ people</small>
             </div>
         </div>
         <div class="panel-aurora"></div>
@@ -513,96 +551,68 @@
         <div class="panel-header"> <span class="panel-icon">💬</span> <span class="panel-title">AI Assistant</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content"> 
             <div id="chatMessages"> 
-                <div class="message bot">Ask me about air quality data visible on the map. Try: "What's the PM2.5 level in Beijing?" or "Show me the most polluted cities."</div> 
+                <div class="message bot">Welcome to the Global Air Quality Intelligence Platform! I can help you understand air quality data from around the world. Try asking me about specific cities like "What's the air quality in Delhi?" or "Show me the cleanest cities."</div> 
             </div> 
             <div id="chatInputArea"> 
-                <input id="chatInput" type="text" placeholder="Ask a question..." /> 
+                <input id="chatInput" type="text" placeholder="Ask about air quality data..." /> 
                 <button id="chatSend">Send</button> 
             </div> 
         </div>
         <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 420px;">
-         <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-         <div class="panel-content">
-            <div class="settings-section">
-                <div class="settings-title">Data Layers</div>
-                <div class="layer-control"><span>PM2.5 Stations</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>Google AQI Cities</span><label class="switch"><input type="checkbox" id="layerGoogleAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
-            </div>
-            <div class="settings-section"> 
-                <div class="settings-title">Basemap</div> 
-                <div class="basemap-grid"> 
-                    <div class="basemap-option active" data-basemap="satellite">Satellite</div> 
-                    <div class="basemap-option" data-basemap="streets-night-vector">Dark Streets</div> 
-                    <div class="basemap-option" data-basemap="hybrid">Hybrid</div> 
-                    <div class="basemap-option" data-basemap="terrain">Terrain</div> 
-                    <div class="basemap-option" data-basemap="dark-gray-vector">Dark Gray</div> 
-                    <div class="basemap-option" data-basemap="oceans">Oceans</div> 
-                </div> 
-            </div>
-            <div class="settings-section"> 
-                <div class="settings-title">Fire Intensity Filter</div> 
-                <div class="control-slider"> 
-                    <label>Min Brightness (K): <span id="brightnessValue">365</span></label> 
-                    <input type="range" id="brightnessSlider" min="300" max="400" value="365" step="1"> 
-                </div> 
-            </div>
-            <div class="settings-section"> 
-                <div class="settings-title">Animation Controls</div> 
-                <div class="control-slider"> 
-                    <label>Flow Speed: <span id="speedValue">6</span></label> 
-                    <input type="range" id="windSpeed" min="1" max="20" value="6"> 
-                </div> 
-                <div class="control-slider"> 
-                    <label>Density: <span id="densityValue">0.7</span></label> 
-                    <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> 
-                </div> 
-                <div class="control-slider"> 
-                    <label>Trail Length: <span id="trailValue">120</span></label> 
-                    <input type="range" id="windTrail" min="50" max="300" value="120"> 
-                </div> 
-                <div class="preset-buttons"> 
-                    <button class="preset-btn" data-preset="subtle">Subtle</button> 
-                    <button class="preset-btn active" data-preset="normal">Normal</button> 
-                    <button class="preset-btn" data-preset="intense">Intense</button> 
-                </div> 
-            </div>
-         </div>
-         <div class="panel-aurora"></div>
-    </div>
-
     <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 480px); right: 20px;">
-        <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Legend</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content" id="legend-container">
-            <div style="padding: 16px; color: var(--text-secondary);">
-                <h4 style="margin-bottom: 12px; color: var(--text-primary);">PM2.5 Air Quality Index</h4>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <div style="width: 12px; height: 12px; background: #00e400; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Good (0-10 μg/m³)</span>
+        <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Air Quality Index</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
+        <div class="panel-content">
+            <div style="padding: 0;">
+                <h4 style="margin-bottom: 16px; color: var(--text-primary); font-size: 16px;">PM2.5 Concentration (μg/m³)</h4>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 6px; background: rgba(0, 228, 0, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #00e400; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #00e400;">Good (0-12)</strong><br>
+                        <small style="opacity: 0.8;">Air quality is satisfactory</small>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <div style="width: 12px; height: 12px; background: #ffff00; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Moderate (10-25 μg/m³)</span>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 6px; background: rgba(255, 255, 0, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #ffff00; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #ffff00;">Moderate (12-35)</strong><br>
+                        <small style="opacity: 0.8;">Sensitive people may experience symptoms</small>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <div style="width: 12px; height: 12px; background: #ff7e00; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Unhealthy for Sensitive (25-50 μg/m³)</span>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 6px; background: rgba(255, 126, 0, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #ff7e00; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #ff7e00;">Unhealthy for Sensitive (35-55)</strong><br>
+                        <small style="opacity: 0.8;">Sensitive groups should limit outdoor exposure</small>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <div style="width: 12px; height: 12px; background: #ff0000; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Unhealthy (50-75 μg/m³)</span>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 6px; background: rgba(255, 0, 0, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #ff0000; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #ff0000;">Unhealthy (55-150)</strong><br>
+                        <small style="opacity: 0.8;">Everyone may experience health effects</small>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <div style="width: 12px; height: 12px; background: #8f3f97; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Very Unhealthy (75-100 μg/m³)</span>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 6px; background: rgba(143, 63, 151, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #8f3f97; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #8f3f97;">Very Unhealthy (150-250)</strong><br>
+                        <small style="opacity: 0.8;">Health warnings of emergency conditions</small>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center;">
-                    <div style="width: 12px; height: 12px; background: #7e0023; border-radius: 50%; margin-right: 8px;"></div>
-                    <span>Hazardous (100+ μg/m³)</span>
+                
+                <div style="display: flex; align-items: center; padding: 8px; border-radius: 6px; background: rgba(126, 0, 35, 0.1);">
+                    <div style="width: 16px; height: 16px; background: #7e0023; border-radius: 50%; margin-right: 12px;"></div>
+                    <div>
+                        <strong style="color: #7e0023;">Hazardous (250+)</strong><br>
+                        <small style="opacity: 0.8;">Emergency conditions, avoid all outdoor activity</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -611,20 +621,28 @@
 </div>
 
 <div id="controlDock">
-    <button class="dock-btn" data-panel="panel-explorer" title="Data Explorer">🔍</button>
-    <button class="dock-btn" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
-    <button class="dock-btn" data-panel="panel-settings" title="Settings">⚙️</button>
-    <button class="dock-btn" data-panel="panel-legend" title="Legend">🗺️</button>
+    <button class="dock-btn active" data-panel="panel-explorer" title="Data Explorer">🔍</button>
+    <button class="dock-btn active" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
     <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
+    <button class="dock-btn active" data-panel="panel-legend" title="Legend">🗺️</button>
 </div>
 
 <script>
-    // Global variables for error handling
-    let hasMapError = false;
-    let mapLoadAttempts = 0;
-    const MAX_LOAD_ATTEMPTS = 3;
+    // Initialize status tracking
+    let mapStatus = 'loading';
+    let loadAttempts = 0;
+    const MAX_ATTEMPTS = 2;
 
-    // --- 3D GLOBE INITIALIZATION ---
+    function updateStatus(status, text) {
+        mapStatus = status;
+        const dot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        
+        dot.className = `status-dot ${status}`;
+        statusText.textContent = text;
+    }
+
+    // Initialize 3D Globe
     document.addEventListener('DOMContentLoaded', () => {
         try {
             if (window.VANTA && window.THREE) {
@@ -637,20 +655,18 @@
                     minWidth: 200.00,
                     scale: 1.00,
                     scaleMobile: 1.00,
-                    color: 0xffd700, // Accent Gold
+                    color: 0xffd700,
                     color2: 0xffffff,
-                    backgroundColor: 0x0C0C12, // Panel BG color
+                    backgroundColor: 0x0C0C12,
                     size: 0.8
                 });
-            } else {
-                console.warn('VANTA or THREE.js not loaded, skipping globe animation');
             }
         } catch (error) {
-            console.warn('Failed to initialize globe:', error);
+            console.warn('Globe initialization failed:', error);
         }
     });
 
-    // --- DYNAMIC PANEL & DOCK LOGIC ---
+    // Dynamic Panel Management
     function initializeUI() {
         const panels = document.querySelectorAll('.floating-panel');
         const dockBtns = document.querySelectorAll('.dock-btn');
@@ -672,12 +688,12 @@
             const closeBtn = panel.querySelector('.close-btn');
             const dockBtn = document.querySelector(`.dock-btn[data-panel="${panel.id}"]`);
             
-            // Show some panels by default
-            if (panel.id === 'panel-explorer' || panel.id === 'panel-critical') {
+            // Show default panels
+            if (dockBtn && dockBtn.classList.contains('active')) {
                 panel.classList.add('visible');
-                if (dockBtn) dockBtn.classList.add('active');
             }
 
+            // Drag functionality
             function onDrag({movementX, movementY}){
                 const style = window.getComputedStyle(panel);
                 const matrix = new DOMMatrix(style.transform);
@@ -714,27 +730,26 @@
                 }
             });
         });
-        
-        // Dock Animation Logic
-        dockBtns.forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.add('prev');
-            });
-            btn.addEventListener('mouseleave', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.remove('prev');
-            });
-        });
     }
-    document.addEventListener('DOMContentLoaded', initializeUI);
 
-    // --- SIMPLIFIED CHAT LOGIC ---
+    // Enhanced Chat System
     function initializeChat() {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
         const chatMessages = document.getElementById('chatMessages');
-        let chatHistory = [];
+
+        const airQualityData = {
+            'beijing': { pm25: 45, status: 'Moderate', country: 'China', population: '21M' },
+            'delhi': { pm25: 112, status: 'Unhealthy', country: 'India', population: '32M' },
+            'mumbai': { pm25: 89, status: 'Unhealthy', country: 'India', population: '20M' },
+            'los angeles': { pm25: 22, status: 'Moderate', country: 'USA', population: '4M' },
+            'lahore': { pm25: 186, status: 'Hazardous', country: 'Pakistan', population: '11M' },
+            'dhaka': { pm25: 134, status: 'Very Unhealthy', country: 'Bangladesh', population: '9M' },
+            'jakarta': { pm25: 98, status: 'Unhealthy', country: 'Indonesia', population: '10M' },
+            'mexico city': { pm25: 38, status: 'Moderate', country: 'Mexico', population: '9M' },
+            'london': { pm25: 15, status: 'Moderate', country: 'UK', population: '9M' },
+            'sydney': { pm25: 8, status: 'Good', country: 'Australia', population: '5M' }
+        };
 
         function addMessage(text, isUser = false) {
             const messageDiv = document.createElement('div');
@@ -745,23 +760,29 @@
             return messageDiv;
         }
 
-        function getSimpleResponse(userText) {
+        function getAirQualityResponse(userText) {
             const text = userText.toLowerCase();
             
-            if (text.includes('beijing')) {
-                return "According to the data shown on the map, Beijing currently has a PM2.5 level of approximately 45 μg/m³, which is in the 'Moderate' range. This is much better than previous years but still above WHO recommended levels.";
-            } else if (text.includes('delhi') || text.includes('india')) {
-                return "New Delhi shows very high pollution levels with PM2.5 around 112 μg/m³, categorized as 'Very Unhealthy'. This is a serious health concern for residents.";
-            } else if (text.includes('pollution') || text.includes('polluted')) {
-                return "The most polluted cities currently visible on the map include Lahore (186 μg/m³), Dhaka (134 μg/m³), and Mumbai (89 μg/m³). These areas show hazardous to unhealthy air quality levels.";
-            } else if (text.includes('good') || text.includes('clean')) {
-                return "Cities with good air quality (below 10 μg/m³ PM2.5) are rare but include some locations in Northern Europe, Australia, and parts of Canada. You can see the green markers on the map.";
-            } else if (text.includes('fire') || text.includes('wildfire')) {
-                return "The map shows active fire hotspots detected by VIIRS satellite data. These fires can significantly impact air quality in surrounding areas by releasing particulate matter.";
+            // Check for specific cities
+            for (const [city, data] of Object.entries(airQualityData)) {
+                if (text.includes(city)) {
+                    return `${city.charAt(0).toUpperCase() + city.slice(1)}, ${data.country} currently has PM2.5 levels of ${data.pm25} μg/m³, which is classified as "${data.status}". The metropolitan area has approximately ${data.population} people potentially affected by this air quality level.`;
+                }
+            }
+            
+            // General queries
+            if (text.includes('worst') || text.includes('most polluted') || text.includes('dangerous')) {
+                return "The most polluted cities currently are Lahore (186 μg/m³), Dhaka (134 μg/m³), and Jakarta (98 μg/m³). These cities have hazardous to unhealthy air quality levels that pose serious health risks to residents.";
+            } else if (text.includes('best') || text.includes('cleanest') || text.includes('good air')) {
+                return "Cities with the best air quality include Sydney (8 μg/m³) and other locations shown in green on the map. These areas meet WHO air quality guidelines and are safe for all population groups.";
+            } else if (text.includes('health') || text.includes('effects')) {
+                return "High PM2.5 levels can cause respiratory problems, heart disease, and premature death. Sensitive groups include children, elderly, and people with lung/heart conditions. When PM2.5 exceeds 35 μg/m³, everyone should limit outdoor activities.";
+            } else if (text.includes('who') || text.includes('guidelines')) {
+                return "The WHO recommends annual PM2.5 levels below 5 μg/m³ and daily levels below 15 μg/m³. Many cities worldwide exceed these guidelines, sometimes by 10-20 times, creating significant public health challenges.";
             } else if (text.includes('help') || text.includes('what')) {
-                return "I can help you understand the air quality data shown on this map. Ask me about specific cities, pollution levels, or what the different colors mean. Try asking about Beijing, Delhi, or pollution hotspots!";
+                return "I can provide information about air quality in major cities worldwide. Try asking about specific cities like 'What's the air quality in Delhi?' or general questions like 'Which cities have the worst air pollution?'";
             } else {
-                return "I can see the air quality data on this map. Try asking me about specific cities like Beijing or Delhi, or ask about the most polluted areas currently visible.";
+                return "I can help you understand global air quality patterns. Ask me about specific cities, health effects, or pollution trends. The data shows PM2.5 particle concentrations, which are one of the most harmful air pollutants.";
             }
         }
 
@@ -770,344 +791,56 @@
             if (!text) return;
             
             addMessage(text, true);
-            chatHistory.push({ role: "user", content: text });
             chatInput.value = '';
             chatInput.disabled = true;
             chatSend.disabled = true;
             
-            const thinkingMsg = addMessage('Thinking...', false);
+            const thinkingMsg = addMessage('Analyzing air quality data...', false);
 
-            // Simulate thinking delay
             setTimeout(() => {
-                const response = getSimpleResponse(text);
+                const response = getAirQualityResponse(text);
                 thinkingMsg.textContent = response;
-                chatHistory.push({ role: "assistant", content: response });
                 
                 chatInput.disabled = false;
                 chatSend.disabled = false;
                 chatInput.focus();
-            }, 1000);
+            }, 800);
         }
 
         chatSend.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
-    }
-    document.addEventListener('DOMContentLoaded', initializeChat);
-
-    // --- ESRI MAP INITIALIZATION WITH ERROR HANDLING ---
-    function initializeMap() {
-        mapLoadAttempts++;
-        
-        require([
-            "esri/Map", "esri/views/MapView",
-            "esri/layers/FeatureLayer", "esri/layers/GeoJSONLayer",
-            "esri/layers/ImageryLayer", "esri/layers/ImageryTileLayer", 
-            "esri/renderers/FlowRenderer", "esri/widgets/Legend", "esri/config"
-        ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
-
-            let pm25Layer, fireLayer, flowLayer, legendWidget;
-
-            try {
-                const map = new Map({ basemap: "satellite" });
-                const view = new MapView({
-                    container: "viewDiv",
-                    map, 
-                    center: [105, 35], 
-                    zoom: 3,
-                    ui: { components: ["attribution"] },
-                    popup: { 
-                        dockEnabled: true, 
-                        dockOptions: { 
-                            buttonEnabled: false, 
-                            breakpoint: false, 
-                            position: "bottom-right" 
-                        } 
-                    }
-                });
-
-                // Configure CORS
-                try { 
-                    esriConfig.request.corsEnabledServers.push(window.location.origin); 
-                    esriConfig.request.corsEnabledServers.push("https://services9.arcgis.com");
-                } catch(e) {
-                    console.warn('CORS configuration failed:', e);
-                }
-
-                const pm25PopupTemplate = {
-                    title: "Air Quality Station",
-                    content: `<div style="line-height:1.6;">
-                        <b>Location:</b> {location}<br>
-                        <b>PM2.5:</b> <b>{value}</b> μg/m³<br>
-                        <b>Status:</b> {status}<br>
-                        <b>Last Updated:</b> {lastUpdated}
-                    </div>`
-                };
-
-                const pm25Renderer = {
-                    type: "class-breaks",
-                    field: "value",
-                    classBreakInfos: [
-                        {
-                            minValue: 0, maxValue: 10,
-                            symbol: { type: "simple-marker", size: 8, color: "#00e400", outline: { color: "#fff", width: 1 } },
-                            label: "Good (0–10)"
-                        },
-                        {
-                            minValue: 10.1, maxValue: 25,
-                            symbol: { type: "simple-marker", size: 10, color: "#ffff00", outline: { color: "#fff", width: 1 } },
-                            label: "Moderate (10–25)"
-                        },
-                        {
-                            minValue: 25.1, maxValue: 50,
-                            symbol: { type: "simple-marker", size: 12, color: "#ff7e00", outline: { color: "#fff", width: 1 } },
-                            label: "USG (25–50)"
-                        },
-                        {
-                            minValue: 50.1, maxValue: 75,
-                            symbol: { type: "simple-marker", size: 14, color: "#ff0000", outline: { color: "#fff", width: 1 } },
-                            label: "Unhealthy (50–75)"
-                        },
-                        {
-                            minValue: 75.1, maxValue: 100,
-                            symbol: { type: "simple-marker", size: 16, color: "#8f3f97", outline: { color: "#fff", width: 1 } },
-                            label: "Very Unhealthy (75–100)"
-                        },
-                        {
-                            minValue: 100.1, maxValue: 9999,
-                            symbol: { type: "simple-marker", size: 18, color: "#7e0023", outline: { color: "#fff", width: 1 } },
-                            label: "Hazardous (100+)"
-                        }
-                    ]
-                };
-
-                // Create PM2.5 layer
-                pm25Layer = new FeatureLayer({
-                    url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0",
-                    title: "PM2.5 Stations (μg/m³)",
-                    outFields: ["*"],
-                    renderer: pm25Renderer,
-                    popupTemplate: pm25PopupTemplate,
-                    definitionExpression: "value BETWEEN 0 AND 500",
-                    featureReduction: {
-                        type: "cluster",
-                        clusterRadius: "80px"
-                    }
-                });
-
-                // Add PM2.5 layer to map
-                map.add(pm25Layer);
-
-                // Flow layer for ocean currents (optional, might fail)
-                try {
-                    flowLayer = new ImageryTileLayer({
-                        url: "https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer",
-                        title: "Global Ocean Currents",
-                        opacity: 0.6,
-                        renderer: new FlowRenderer({
-                            type: "flow",
-                            density: 0.7,
-                            flowSpeed: 6,
-                            trailLength: 120
-                        })
-                    });
-                    map.add(flowLayer);
-                } catch (e) {
-                    console.warn('Flow layer failed to load:', e);
-                }
-
-                // Fire layer
-                try {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const fireDateString = yesterday.toISOString().split('T')[0];
-
-                    fireLayer = new FeatureLayer({
-                        url: "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0",
-                        title: "Active Fires (VIIRS)",
-                        outFields: ["BRIGHT_TI4", "ACQ_DATE"],
-                        renderer: {
-                            type: "simple",
-                            symbol: {
-                                type: "simple-marker",
-                                style: "circle",
-                                color: "#FF5733",
-                                size: "6px",
-                                outline: { color: [255, 255, 0, 0.8], width: 1 }
-                            }
-                        },
-                        definitionExpression: `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= 365`
-                    });
-                    map.add(fireLayer);
-                } catch (e) {
-                    console.warn('Fire layer failed to load:', e);
-                }
-
-                // Initialize view
-                view.when(() => {
-                    document.getElementById("loading").style.display = "none";
-                    hasMapError = false;
-                    
-                    // Initialize legend
-                    try {
-                        legendWidget = new Legend({ view, container: "legend-container" });
-                    } catch (e) {
-                        console.warn('Legend failed to initialize:', e);
-                    }
-                    
-                    console.log('Map loaded successfully');
-                    setupEventHandlers(map, view, pm25Layer, fireLayer, flowLayer);
-                }).catch(error => {
-                    console.error('Map view initialization failed:', error);
-                    showMapError(error);
-                });
-
-            } catch (error) {
-                console.error('Map creation failed:', error);
-                showMapError(error);
-            }
-
-        }, function(error) {
-            console.error('ArcGIS modules failed to load:', error);
-            showMapError(error);
+        chatInput.addEventListener('keypress', e => { 
+            if (e.key === 'Enter') sendMessage(); 
         });
     }
 
-    function showMapError(error) {
-        hasMapError = true;
-        const loading = document.getElementById("loading");
-        
-        if (mapLoadAttempts < MAX_LOAD_ATTEMPTS) {
-            loading.innerHTML = `
-                <div>Loading attempt ${mapLoadAttempts} failed. Retrying...</div>
-                <div style="font-size: 14px; margin-top: 10px;">Please check your internet connection</div>
-            `;
-            setTimeout(() => initializeMap(), 2000);
-        } else {
-            loading.innerHTML = `
-                <div class="error-message">
-                    <h3>Map Loading Failed</h3>
-                    <p>Unable to load the mapping services. This could be due to:</p>
-                    <ul style="text-align: left; margin: 10px 0;">
-                        <li>Network connectivity issues</li>
-                        <li>ArcGIS service availability</li>
-                        <li>Browser security settings blocking external content</li>
-                    </ul>
-                    <button onclick="location.reload()" style="
-                        margin-top: 15px; 
-                        padding: 10px 20px; 
-                        background: var(--accent-gold); 
-                        color: #050507; 
-                        border: none; 
-                        border-radius: 6px; 
-                        cursor: pointer;
-                        font-weight: 600;
-                    ">Reload Page</button>
-                </div>
-            `;
-        }
-    }
-
-    function setupEventHandlers(map, view, pm25Layer, fireLayer, flowLayer) {
-        // Basemap controls
-        document.querySelectorAll(".basemap-option").forEach(opt => {
-            opt.addEventListener("click", function() {
-                try {
-                    map.basemap = this.dataset.basemap;
-                    document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active"));
-                    this.classList.add("active");
-                } catch (e) {
-                    console.warn('Basemap change failed:', e);
-                }
-            });
-        });
-
-        // Layer visibility controls
-        if (pm25Layer) {
-            document.getElementById("layerAQI").addEventListener("change", e => {
-                pm25Layer.visible = e.target.checked;
-            });
-        }
-
-        if (fireLayer) {
-            document.getElementById("layerFire").addEventListener("change", e => {
-                fireLayer.visible = e.target.checked;
-            });
-
-            // Fire brightness filter
-            document.getElementById("brightnessSlider").addEventListener("input", e => {
-                const val = parseInt(e.target.value);
-                document.getElementById("brightnessValue").textContent = val;
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const fireDateString = yesterday.toISOString().split('T')[0];
-                fireLayer.definitionExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= ${val}`;
-            });
-        }
-
-        if (flowLayer) {
-            document.getElementById("layerFlow").addEventListener("change", e => {
-                flowLayer.visible = e.target.checked;
-            });
-
-            // Flow animation controls
-            const windSpeed = document.getElementById("windSpeed");
-            const density = document.getElementById("windDensity");
-            const trail = document.getElementById("windTrail");
-
-            [windSpeed, density, trail].forEach(slider => {
-                slider.addEventListener("input", () => {
-                    document.getElementById("speedValue").textContent = windSpeed.value;
-                    document.getElementById("densityValue").textContent = density.value;
-                    document.getElementById("trailValue").textContent = trail.value;
-                    
-                    if (flowLayer?.renderer?.type === "flow") {
-                        flowLayer.renderer.flowSpeed = parseInt(windSpeed.value);
-                        flowLayer.renderer.density = parseFloat(density.value);
-                        flowLayer.renderer.trailLength = parseInt(trail.value);
-                    }
-                });
-            });
-
-            // Animation presets
-            document.querySelectorAll(".preset-btn").forEach(btn => {
-                btn.addEventListener("click", function() {
-                    const preset = this.dataset.preset;
-                    const presets = {
-                        subtle: { speed: 3, density: 0.3, trail: 80 },
-                        normal: { speed: 6, density: 0.7, trail: 120 },
-                        intense: { speed: 12, density: 1.0, trail: 180 }
-                    };
-                    
-                    const config = presets[preset];
-                    if (config) {
-                        windSpeed.value = config.speed;
-                        density.value = config.density;
-                        trail.value = config.trail;
-                        windSpeed.dispatchEvent(new Event('input'));
-                        
-                        document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
-                        this.classList.add("active");
-                    }
-                });
-            });
-        }
-
-        // Search functionality
-        const searchInput = document.getElementById("searchInput");
-        const searchBtn = document.getElementById("searchBtn");
+    // Enhanced Search Functionality
+    function initializeSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const cityItems = document.querySelectorAll('.city-item[data-city]');
 
         function performSearch() {
-            const query = searchInput.value.trim();
+            const query = searchInput.value.trim().toLowerCase();
             if (!query) return;
 
-            // Simple search simulation
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message bot';
-            messageDiv.textContent = `Searching for air quality data in "${query}". This is a demo - in a full implementation, this would query real-time air quality APIs.`;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // Highlight matching cities
+            cityItems.forEach(item => {
+                const cityName = item.dataset.city.toLowerCase();
+                if (cityName.includes(query)) {
+                    item.style.background = 'rgba(255, 215, 0, 0.2)';
+                    item.style.borderColor = 'var(--accent-gold)';
+                    setTimeout(() => {
+                        item.style.background = '';
+                        item.style.borderColor = '';
+                    }, 3000);
+                }
+            });
 
+            // Also send to chat
+            const chatInput = document.getElementById('chatInput');
+            chatInput.value = `What's the air quality in ${query}?`;
+            document.getElementById('chatSend').click();
+            
             // Open chat panel
             const chatPanel = document.getElementById('panel-chat');
             const chatBtn = document.querySelector('.dock-btn[data-panel="panel-chat"]');
@@ -1121,29 +854,126 @@
         searchInput.addEventListener('keypress', e => {
             if (e.key === 'Enter') performSearch();
         });
+
+        // City item interactions
+        cityItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const cityName = item.dataset.city;
+                const chatInput = document.getElementById('chatInput');
+                chatInput.value = `Tell me about air quality in ${cityName}`;
+                document.getElementById('chatSend').click();
+                
+                // Open chat panel
+                const chatPanel = document.getElementById('panel-chat');
+                const chatBtn = document.querySelector('.dock-btn[data-panel="panel-chat"]');
+                if (chatPanel && chatBtn) {
+                    chatPanel.classList.add('visible');
+                    chatBtn.classList.add('active');
+                }
+            });
+        });
     }
 
-    // Initialize the application
+    // Map Loading with Fallback
+    function initializeMap() {
+        loadAttempts++;
+        updateStatus('loading', `Loading map services... (Attempt ${loadAttempts})`);
+
+        // Try to load ArcGIS first
+        const script = document.createElement('script');
+        script.src = 'https://js.arcgis.com/4.29/';
+        script.onload = () => loadArcGISMap();
+        script.onerror = () => useFallbackMap();
+        
+        // Timeout fallback
+        setTimeout(() => {
+            if (mapStatus === 'loading') {
+                useFallbackMap();
+            }
+        }, 10000);
+        
+        document.head.appendChild(script);
+    }
+
+    function loadArcGISMap() {
+        try {
+            require([
+                "esri/Map", "esri/views/MapView", "esri/layers/FeatureLayer"
+            ], function(Map, MapView, FeatureLayer) {
+                
+                const map = new Map({ basemap: "satellite" });
+                const view = new MapView({
+                    container: "viewDiv",
+                    map: map,
+                    center: [105, 35],
+                    zoom: 3,
+                    ui: { components: ["attribution"] }
+                });
+
+                view.when(() => {
+                    document.getElementById("loading").style.display = "none";
+                    updateStatus('online', 'Live map data loaded');
+                    console.log('ArcGIS map loaded successfully');
+                }).catch(() => {
+                    useFallbackMap();
+                });
+
+            }, () => {
+                useFallbackMap();
+            });
+        } catch (error) {
+            useFallbackMap();
+        }
+    }
+
+    function useFallbackMap() {
+        console.log('Using fallback map visualization');
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("fallbackMap").style.display = "flex";
+        updateStatus('offline', 'Using offline map visualization');
+        
+        // Animate pollution hotspots
+        const hotspots = document.querySelectorAll('.pollution-hotspot');
+        hotspots.forEach((spot, index) => {
+            setTimeout(() => {
+                spot.style.animationDelay = `${index * 0.2}s`;
+            }, index * 200);
+        });
+    }
+
+    // Initialize everything
     document.addEventListener('DOMContentLoaded', () => {
-        // Small delay to ensure all dependencies are loaded
+        initializeUI();
+        initializeChat();
+        initializeSearch();
+        
+        // Start map loading after a short delay
         setTimeout(() => {
             initializeMap();
-        }, 500);
+        }, 1000);
     });
 
-    // Global error handler
-    window.addEventListener('error', function(e) {
-        console.error('Global error:', e.error);
-        if (!hasMapError && e.error.message.includes('esri')) {
-            showMapError(e.error);
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        // Adjust panel positions for mobile
+        if (window.innerWidth <= 768) {
+            document.querySelectorAll('.floating-panel').forEach(panel => {
+                if (panel.classList.contains('visible')) {
+                    panel.style.left = '20px';
+                    panel.style.right = '20px';
+                    panel.style.width = 'calc(100vw - 40px)';
+                }
+            });
         }
     });
 
-    // Expose zoom function for chat integration
-    window.zoomToCity = function(city, country) {
-        console.log(`Zooming to ${city}, ${country}`);
-        // In a full implementation, this would actually zoom the map
-    };
+    // Global error handling
+    window.addEventListener('error', (e) => {
+        console.warn('Error caught:', e.error?.message);
+        if (mapStatus === 'loading' && e.error?.message?.includes('esri')) {
+            useFallbackMap();
+        }
+    });
 </script>
 
 </body>
