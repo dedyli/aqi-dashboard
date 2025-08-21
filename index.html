@@ -400,8 +400,13 @@
     #chatSend:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
     #chatSend:disabled { opacity: 0.5; cursor: not-allowed; }
     
-    .city-item { padding: 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; transition: background-color 0.2s; }
+    .city-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 4px; }
     .city-item:hover { background-color: rgba(255,215,0,0.1); }
+    .city-item .tag { font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: 600; color: #050507; }
+    .city-item .tag.good { background-color: #00e400; }
+    .city-item .tag.mod { background-color: #ffff00; }
+    .city-item .tag.bad { background-color: #ff7e00; }
+
     
     /* --- LEGEND PANEL --- */
     #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
@@ -554,7 +559,6 @@
             });
         });
         
-        // Dock Animation Logic
         dockBtns.forEach(btn => {
             btn.addEventListener('mouseenter', () => {
                 const prev = btn.previousElementSibling;
@@ -565,9 +569,6 @@
                 if (prev) prev.classList.remove('prev');
             });
         });
-        
-        // No active panel by default
-        // setActive(document.getElementById('panel-explorer')); 
     }
     document.addEventListener('DOMContentLoaded', initializeUI);
 
@@ -636,12 +637,30 @@
       "esri/widgets/Legend","esri/config"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig) {
 
-      let googleAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget;
+      let googleAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget, citiesLayer;
+
+      window.zoomToCity = (city, country) => {
+          if (!view) return;
+          const queryLayer = citiesLayer || pm25Layer;
+          const query = queryLayer.createQuery();
+          const esc = s => String(s).replace(/'/g,"''");
+          const whereClause = citiesLayer ? `CITY_NAME = '${esc(city)}'` : `city = '${esc(city)}'`;
+          query.where = whereClause;
+          query.returnGeometry = true;
+          queryLayer.queryFeatures(query).then(result => {
+              if (result.features.length > 0) {
+                  view.goTo({
+                      target: result.features[0].geometry,
+                      zoom: 10
+                  }, { duration: 1500 });
+              }
+          });
+      };
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
         container: "viewDiv",
-        map, center: [105, 35], zoom: 3, // Zoom out for a global view
+        map, center: [105, 35], zoom: 3,
         ui: { components: ["attribution"] },
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
@@ -660,15 +679,17 @@
       pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, popupTemplate: pm25PopupTemplate, definitionExpression: "value BETWEEN 0 AND 500", featureReduction: { type: "cluster", clusterRadius: "80px" } });
       map.add(pm25Layer);
 
+      citiesLayer = new FeatureLayer({ url:"https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0" }); // Used for search
+
       flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
       map.add(flowLayer);
 
       const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const fireDateString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')} ${String(yesterday.getHours()).padStart(2, '0')}:${String(yesterday.getMinutes()).padStart(2, '0')}:${String(yesterday.getSeconds()).padStart(2, '0')}`;
-      const fireFilterExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= 365`;
+      yesterday.setDate(yesterday.getDate() - 2); // Use 2 days for more data
+      const fireDateString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')} 00:00:00`;
+      const fireFilterExpression = `ACQ_DATE >= timestamp '${fireDateString}'`;
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", outFields: ["BRIGHT_TI4"], renderer: fireRenderer, definitionExpression: fireFilterExpression });
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", outFields: ["BRIGHT_TI4"], renderer: fireRenderer, definitionExpression: `${fireFilterExpression} AND BRIGHT_TI4 >= 365` });
       map.add(fireLayer);
       
       view.when(() => {
@@ -678,12 +699,12 @@
         loadGoogleAqiData();
       });
       
-      async function loadGoogleAqiData() { /* ... full data loading logic ... */ }
-      async function refreshTopCities() { /* ... full data loading logic ... */ }
+      async function loadGoogleAqiData() { /* ... */ }
+      async function refreshTopCities() { /* ... */ }
 
       // --- SETTINGS PANEL LOGIC ---
       document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
-      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= '${fireDateString}' AND BRIGHT_TI4 >= ${val}`; });
+      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `${fireFilterExpression} AND BRIGHT_TI4 >= ${val}`; });
       
       document.getElementById("layerAQI").addEventListener("change", e => { pm25Layer.visible = e.target.checked; });
       document.getElementById("layerGoogleAQI").addEventListener("change", e => { if (googleAqiLayer) googleAqiLayer.visible = e.target.checked; });
