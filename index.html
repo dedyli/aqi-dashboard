@@ -4,8 +4,6 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Global Air Quality Intelligence Platform</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -128,10 +126,97 @@
         pointer-events: auto;
     }
     #header-globe {
-        width: 60px;
-        height: var(--header-height);
+        width: 50px;
+        height: 50px;
         margin-right: 20px;
         cursor: pointer;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        overflow: hidden;
+        background: linear-gradient(45deg, #1a1a2e, #16213e);
+        border: 2px solid var(--accent-gold);
+        box-shadow: 0 0 20px var(--accent-glow);
+        transition: all 0.3s ease;
+    }
+
+    #header-globe:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px var(--accent-glow);
+        border-color: var(--accent-gold);
+    }
+
+    .globe-gif {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        filter: brightness(1.1) contrast(1.1);
+    }
+
+    .globe-css-fallback {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(
+            45deg,
+            #4a90e2 0%,
+            #357abd 25%,
+            #2d5aa0 50%,
+            #1e3a82 75%,
+            #4a90e2 100%
+        );
+        position: relative;
+        animation: globeRotate 4s linear infinite;
+        display: none;
+    }
+
+    .globe-css-fallback::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        bottom: 2px;
+        border-radius: 50%;
+        background: radial-gradient(
+            circle at 30% 30%,
+            rgba(255, 255, 255, 0.3) 0%,
+            rgba(255, 255, 255, 0.1) 40%,
+            transparent 70%
+        );
+    }
+
+    .globe-css-fallback::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(0, 255, 0, 0.3) 20%,
+            rgba(255, 255, 0, 0.3) 40%,
+            rgba(255, 0, 0, 0.3) 60%,
+            rgba(0, 255, 0, 0.3) 80%,
+            transparent 100%
+        );
+        transform: translateY(-50%);
+        animation: continentShift 6s ease-in-out infinite;
+    }
+
+    @keyframes globeRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes continentShift {
+        0%, 100% { opacity: 0.6; transform: translateY(-50%) scaleX(1); }
+        50% { opacity: 0.9; transform: translateY(-50%) scaleX(1.1); }
     }
     .header-title h1 {
         font-size: 20px;
@@ -294,6 +379,88 @@
     }
     .search-btn:hover { box-shadow: 0 0 10px var(--accent-glow); }
 
+    /* --- SETTINGS PANEL STYLES --- */
+    .layer-control {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        font-size: 14px;
+    }
+    .layer-control:not(:last-child) { border-bottom: 1px solid rgba(255,215,0,0.1); }
+    
+    .switch {
+        position: relative; display: inline-block;
+        width: 38px; height: 22px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute; cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(255,255,255,0.1);
+        transition: .4s; border-radius: 22px;
+    }
+    .slider:before {
+        position: absolute; content: "";
+        height: 16px; width: 16px;
+        left: 3px; bottom: 3px;
+        background-color: white;
+        transition: .4s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--accent-gold); }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    .settings-section { margin-bottom: 24px; }
+    .settings-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--panel-border);
+        padding-bottom: 8px;
+    }
+    .basemap-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .basemap-option, .preset-btn {
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border: 1px solid var(--panel-border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        font-size: 14px;
+    }
+    .basemap-option:hover, .preset-btn:hover {
+        border-color: var(--accent-gold);
+        background-color: rgba(255,215,0,0.1);
+    }
+    .basemap-option.active, .preset-btn.active {
+        background-color: var(--accent-gold);
+        color: #050507;
+        font-weight: 600;
+        border-color: var(--accent-gold);
+    }
+    .control-slider label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .control-slider span { font-family: var(--font-mono); color: var(--accent-gold); }
+    input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent-gold);
+    }
+    .preset-buttons { display: flex; gap: 8px; margin-top: 10px; }
+    .preset-btn { flex: 1; }
+
     .city-item { 
         padding: 12px; 
         border-bottom: 1px solid var(--panel-border); 
@@ -412,7 +579,16 @@
 <body>
 
 <header class="main-header">
-    <div id="header-globe"></div>
+    <div id="header-globe" title="Click to explore global pollution hotspots">
+        <!-- Animated GIF Globe (primary) -->
+        <img class="globe-gif" 
+             src="https://i.gifer.com/origin/4a/4aa0e742ad7419b93c9a8ae01e09ba7b_w200.gif" 
+             alt="Rotating Earth"
+             onerror="this.style.display='none'; document.querySelector('.globe-css-fallback').style.display='block';">
+        
+        <!-- CSS Fallback Globe -->
+        <div class="globe-css-fallback"></div>
+    </div>
     <div class="header-title">
         <h1>Global Air Quality Intelligence Platform</h1>
         <h2>Group 62 Tsinghua University IEDE Program - AI Driven Environmental Monitor for the Green Economy</h2>
@@ -561,6 +737,68 @@
         <div class="panel-aurora"></div>
     </div>
 
+    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 420px;">
+         <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
+         <div class="panel-content">
+            <div class="settings-section">
+                <div class="settings-title">Data Visualization</div>
+                <div class="layer-control"><span>PM2.5 Stations</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>Pollution Hotspots</span><label class="switch"><input type="checkbox" id="layerHotspots" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>City Labels</span><label class="switch"><input type="checkbox" id="layerLabels" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>Health Warnings</span><label class="switch"><input type="checkbox" id="layerWarnings" checked><span class="slider"></span></label></div>
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Map Style</div> 
+                <div class="basemap-grid"> 
+                    <div class="basemap-option active" data-basemap="satellite">Satellite</div> 
+                    <div class="basemap-option" data-basemap="dark">Dark Mode</div> 
+                    <div class="basemap-option" data-basemap="hybrid">Hybrid</div> 
+                    <div class="basemap-option" data-basemap="terrain">Terrain</div> 
+                    <div class="basemap-option" data-basemap="minimal">Minimal</div> 
+                    <div class="basemap-option" data-basemap="ocean">Ocean</div> 
+                </div> 
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Alert Thresholds</div> 
+                <div class="control-slider"> 
+                    <label>Unhealthy Level (PM2.5): <span id="thresholdValue">55</span> μg/m³</label> 
+                    <input type="range" id="thresholdSlider" min="25" max="100" value="55" step="5"> 
+                </div> 
+                <div class="control-slider"> 
+                    <label>Population Risk (Million): <span id="populationValue">5</span>M+</label> 
+                    <input type="range" id="populationSlider" min="1" max="20" value="5" step="1"> 
+                </div> 
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Animation Controls</div> 
+                <div class="control-slider"> 
+                    <label>Pulse Speed: <span id="speedValue">2</span>s</label> 
+                    <input type="range" id="animationSpeed" min="1" max="5" value="2" step="0.5"> 
+                </div> 
+                <div class="control-slider"> 
+                    <label>Intensity: <span id="intensityValue">0.8</span></label> 
+                    <input type="range" id="animationIntensity" min="0.1" max="1" step="0.1" value="0.8"> 
+                </div> 
+                <div class="preset-buttons"> 
+                    <button class="preset-btn" data-preset="subtle">Subtle</button> 
+                    <button class="preset-btn active" data-preset="normal">Normal</button> 
+                    <button class="preset-btn" data-preset="intense">Intense</button> 
+                </div> 
+            </div>
+            <div class="settings-section"> 
+                <div class="settings-title">Data Refresh</div> 
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button class="preset-btn" id="refreshData" style="flex: 1;">Refresh Now</button>
+                    <button class="preset-btn" id="autoRefresh" style="flex: 1;">Auto: OFF</button>
+                </div>
+                <div style="font-size: 12px; opacity: 0.7; text-align: center;">
+                    Last updated: <span id="lastUpdate">2 hours ago</span>
+                </div>
+            </div>
+         </div>
+         <div class="panel-aurora"></div>
+    </div>
+
     <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 480px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Air Quality Index</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content">
@@ -623,6 +861,7 @@
 <div id="controlDock">
     <button class="dock-btn active" data-panel="panel-explorer" title="Data Explorer">🔍</button>
     <button class="dock-btn active" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
+    <button class="dock-btn" data-panel="panel-settings" title="Settings & Controls">⚙️</button>
     <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
     <button class="dock-btn active" data-panel="panel-legend" title="Legend">🗺️</button>
 </div>
@@ -644,25 +883,60 @@
 
     // Initialize 3D Globe
     document.addEventListener('DOMContentLoaded', () => {
-        try {
-            if (window.VANTA && window.THREE) {
-                VANTA.GLOBE({
-                    el: "#header-globe",
-                    mouseControls: true,
-                    touchControls: true,
-                    gyroControls: false,
-                    minHeight: 200.00,
-                    minWidth: 200.00,
-                    scale: 1.00,
-                    scaleMobile: 1.00,
-                    color: 0xffd700,
-                    color2: 0xffffff,
-                    backgroundColor: 0x0C0C12,
-                    size: 0.8
-                });
+        // Initialize header globe with additional fallback logic
+        const globeImg = document.querySelector('.globe-gif');
+        const globeFallback = document.querySelector('.globe-css-fallback');
+        
+        // Backup GIF URLs in case the primary fails
+        const globeUrls = [
+            'https://i.gifer.com/origin/4a/4aa0e742ad7419b93c9a8ae01e09ba7b_w200.gif',
+            'https://media.tenor.com/images/4aa0e742ad7419b93c9a8ae01e09ba7b/tenor.gif',
+            'https://i.imgur.com/fWU3mT0.gif'
+        ];
+        
+        let currentUrlIndex = 0;
+        
+        function tryNextGlobUrl() {
+            currentUrlIndex++;
+            if (currentUrlIndex < globeUrls.length) {
+                globeImg.src = globeUrls[currentUrlIndex];
+            } else {
+                // All GIFs failed, use CSS fallback
+                globeImg.style.display = 'none';
+                globeFallback.style.display = 'block';
             }
-        } catch (error) {
-            console.warn('Globe initialization failed:', error);
+        }
+        
+        // Handle GIF loading errors
+        globeImg.addEventListener('error', tryNextGlobUrl);
+        
+        // Test if GIF loads within 5 seconds
+        setTimeout(() => {
+            if (globeImg && (globeImg.naturalWidth === 0 || globeImg.complete === false)) {
+                tryNextGlobUrl();
+            }
+        }, 5000);
+
+        // Add click interaction to globe
+        const headerGlobe = document.getElementById('header-globe');
+        if (headerGlobe) {
+            headerGlobe.addEventListener('click', () => {
+                // Pulse effect on click
+                headerGlobe.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    headerGlobe.style.transform = 'scale(1)';
+                }, 200);
+                
+                // Optional: Focus on a random pollution hotspot
+                const hotspots = document.querySelectorAll('.pollution-hotspot');
+                if (hotspots.length > 0) {
+                    const randomSpot = hotspots[Math.floor(Math.random() * hotspots.length)];
+                    randomSpot.style.transform = 'scale(2)';
+                    setTimeout(() => {
+                        randomSpot.style.transform = 'scale(1)';
+                    }, 1000);
+                }
+            });
         }
     });
 
@@ -813,8 +1087,176 @@
         });
     }
 
-    // Enhanced Search Functionality
-    function initializeSearch() {
+    // Enhanced Settings Panel Controls
+    function initializeSettings() {
+        // Layer visibility controls
+        const layerToggles = {
+            'layerAQI': '.pollution-hotspot',
+            'layerHotspots': '.pollution-hotspot',
+            'layerLabels': '.city-item',
+            'layerWarnings': '.error-message'
+        };
+
+        Object.entries(layerToggles).forEach(([toggleId, selector]) => {
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                toggle.addEventListener('change', (e) => {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(el => {
+                        el.style.display = e.target.checked ? '' : 'none';
+                    });
+                });
+            }
+        });
+
+        // Basemap style controls
+        document.querySelectorAll('.basemap-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove active class from all options
+                document.querySelectorAll('.basemap-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Apply basemap style to the background
+                const basemap = this.dataset.basemap;
+                const viewDiv = document.getElementById('viewDiv');
+                
+                switch(basemap) {
+                    case 'satellite':
+                        viewDiv.style.background = 'linear-gradient(45deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)';
+                        break;
+                    case 'dark':
+                        viewDiv.style.background = 'linear-gradient(45deg, #000000 0%, #1a1a1a 50%, #2a2a2a 100%)';
+                        break;
+                    case 'hybrid':
+                        viewDiv.style.background = 'linear-gradient(45deg, #0f0a0a 0%, #2e1a1a 50%, #3e1616 100%)';
+                        break;
+                    case 'terrain':
+                        viewDiv.style.background = 'linear-gradient(45deg, #0a0f0a 0%, #1a2e1a 50%, #163e16 100%)';
+                        break;
+                    case 'minimal':
+                        viewDiv.style.background = 'linear-gradient(45deg, #f0f0f0 0%, #e0e0e0 50%, #d0d0d0 100%)';
+                        break;
+                    case 'ocean':
+                        viewDiv.style.background = 'linear-gradient(45deg, #0a0a0f 0%, #1a1a3e 50%, #16162e 100%)';
+                        break;
+                }
+            });
+        });
+
+        // Threshold controls
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValue = document.getElementById('thresholdValue');
+        if (thresholdSlider && thresholdValue) {
+            thresholdSlider.addEventListener('input', (e) => {
+                thresholdValue.textContent = e.target.value;
+                // Update pollution hotspot visibility based on threshold
+                updateHotspotVisibility(parseInt(e.target.value));
+            });
+        }
+
+        const populationSlider = document.getElementById('populationSlider');
+        const populationValue = document.getElementById('populationValue');
+        if (populationSlider && populationValue) {
+            populationSlider.addEventListener('input', (e) => {
+                populationValue.textContent = e.target.value;
+            });
+        }
+
+        // Animation controls
+        const animationSpeed = document.getElementById('animationSpeed');
+        const speedValue = document.getElementById('speedValue');
+        if (animationSpeed && speedValue) {
+            animationSpeed.addEventListener('input', (e) => {
+                speedValue.textContent = e.target.value;
+                updateAnimationSpeed(parseFloat(e.target.value));
+            });
+        }
+
+        const animationIntensity = document.getElementById('animationIntensity');
+        const intensityValue = document.getElementById('intensityValue');
+        if (animationIntensity && intensityValue) {
+            animationIntensity.addEventListener('input', (e) => {
+                intensityValue.textContent = e.target.value;
+                updateAnimationIntensity(parseFloat(e.target.value));
+            });
+        }
+
+        // Animation presets
+        document.querySelectorAll('.preset-btn[data-preset]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const preset = this.dataset.preset;
+                const presets = {
+                    subtle: { speed: 4, intensity: 0.3 },
+                    normal: { speed: 2, intensity: 0.8 },
+                    intense: { speed: 1, intensity: 1.0 }
+                };
+                
+                const config = presets[preset];
+                if (config && animationSpeed && animationIntensity) {
+                    animationSpeed.value = config.speed;
+                    animationIntensity.value = config.intensity;
+                    speedValue.textContent = config.speed;
+                    intensityValue.textContent = config.intensity;
+                    
+                    updateAnimationSpeed(config.speed);
+                    updateAnimationIntensity(config.intensity);
+                    
+                    document.querySelectorAll('.preset-btn[data-preset]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // Data refresh controls
+        const refreshBtn = document.getElementById('refreshData');
+        const autoRefreshBtn = document.getElementById('autoRefresh');
+        const lastUpdate = document.getElementById('lastUpdate');
+        
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                refreshBtn.textContent = 'Refreshing...';
+                refreshBtn.disabled = true;
+                
+                setTimeout(() => {
+                    refreshBtn.textContent = 'Refresh Now';
+                    refreshBtn.disabled = false;
+                    if (lastUpdate) lastUpdate.textContent = 'Just now';
+                }, 2000);
+            });
+        }
+
+        if (autoRefreshBtn) {
+            let autoRefreshEnabled = false;
+            autoRefreshBtn.addEventListener('click', () => {
+                autoRefreshEnabled = !autoRefreshEnabled;
+                autoRefreshBtn.textContent = autoRefreshEnabled ? 'Auto: ON' : 'Auto: OFF';
+                autoRefreshBtn.classList.toggle('active', autoRefreshEnabled);
+            });
+        }
+    }
+
+    function updateHotspotVisibility(threshold) {
+        const hotspots = document.querySelectorAll('.pollution-hotspot');
+        hotspots.forEach(hotspot => {
+            // This is a simplified example - in a real app you'd have actual PM2.5 values
+            const isVisible = Math.random() * 200 > threshold;
+            hotspot.style.display = isVisible ? 'block' : 'none';
+        });
+    }
+
+    function updateAnimationSpeed(speed) {
+        const hotspots = document.querySelectorAll('.pollution-hotspot');
+        hotspots.forEach(hotspot => {
+            hotspot.style.animationDuration = `${speed}s`;
+        });
+    }
+
+    function updateAnimationIntensity(intensity) {
+        const hotspots = document.querySelectorAll('.pollution-hotspot');
+        hotspots.forEach(hotspot => {
+            hotspot.style.opacity = intensity;
+        });
+    }
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const cityItems = document.querySelectorAll('.city-item[data-city]');
@@ -946,6 +1388,7 @@
         initializeUI();
         initializeChat();
         initializeSearch();
+        initializeSettings();
         
         // Start map loading after a short delay
         setTimeout(() => {
