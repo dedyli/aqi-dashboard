@@ -1,7 +1,7 @@
 // netlify/functions/build-aqi-cache.js
 
 import { getStore } from "@netlify/blobs";
-import fetch from "node-fetch";
+// The "import fetch from 'node-fetch';" line has been removed. Fetch is globally available.
 
 // Helper function to calculate US AQI
 function calculateUSAQI(pm25) {
