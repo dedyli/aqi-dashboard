@@ -1,7 +1,7 @@
 // netlify/functions/build-aqi-cache.js
 
-import { getStore } from "@netlify/blobs";
-// The "import fetch from 'node-fetch';" line has been removed. Fetch is globally available.
+const { getStore } = require("@netlify/blobs");
+// We use the globally available fetch, no import/require needed for it.
 
 // Helper function to calculate US AQI
 function calculateUSAQI(pm25) {
@@ -108,7 +108,7 @@ const cities = [
     { name: "Auckland", lat: -36.8485, lon: 174.7633 }, { name: "Sofia", lat: 42.6977, lon: 23.3219 }
 ];
 
-export const handler = async () => {
+exports.handler = async () => {
     console.log("Scheduled function triggered: Starting to build AQI data cache.");
     
     let cityResults = [];
@@ -167,7 +167,6 @@ export const handler = async () => {
 
     const geojsonObject = { type: "FeatureCollection", features: cityResults };
     
-    // Get the blob store and save the JSON data. The store name is "aqi-data-store" and the key is "latest-aqi"
     const store = getStore("aqi-data-store");
     await store.setJSON("latest-aqi", geojsonObject);
 
