@@ -718,7 +718,7 @@
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
         // MODIFIED: Pass the map view to the chat initializer
-        document.addEventListener('DOMContentLoaded', () => initializeChat(view));
+        initializeChat(view);
       });
 
       // Function to calculate US AQI from PM2.5
