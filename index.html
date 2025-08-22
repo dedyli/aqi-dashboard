@@ -393,6 +393,7 @@
     @keyframes messageSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .message.user { align-self: flex-end; background: var(--accent-gradient); color: #050507; font-weight: 500; }
     .message.bot { align-self: flex-start; background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border: 1px solid var(--panel-border); }
+    .message.bot.thinking { font-style: italic; color: var(--text-secondary); }
     #chatInputArea { display: flex; padding: var(--padding); border-top: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); gap: 12px; }
     #chatInput { flex: 1; padding: 12px 16px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.3); color: var(--text-primary); border-radius: 8px; transition: all 0.2s; }
     #chatInput:focus { outline: none; border-color: var(--accent-gold); box-shadow: 0 0 10px var(--accent-glow); }
@@ -464,8 +465,8 @@
                 <div class="settings-title">Data Layers</div>
                 <div class="layer-control"><span>PM2.5 Stations (OpenAQ)</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
                 <div class="layer-control"><span>Cities (Open Meteo)</span><label class="switch"><input type="checkbox" id="layerOpenMeteoAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow"><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire"><span class="slider"></span></label></div>
             </div>
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
             <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
@@ -562,40 +563,90 @@
     document.addEventListener('DOMContentLoaded', initializeUI);
 
     // --- CHAT LOGIC ---
-    function initializeChat() {
+    // MODIFIED: This function now connects to the backend function.
+    function initializeChat(mapView) {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
         const chatMessages = document.getElementById('chatMessages');
+        let chatHistory = [];
 
-        function addMessage(text, sender) {
+        function addMessage(text, sender, isThinking = false) {
             const message = document.createElement('div');
             message.className = `message ${sender}`;
+            if (isThinking) {
+                message.classList.add('thinking');
+                message.id = 'thinking-message';
+            }
             message.textContent = text;
             chatMessages.appendChild(message);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            return message;
+        }
+        
+        // Function to handle map actions from the AI
+        function handleAIAction(action) {
+            if (!action || !action.type || !mapView) return;
+
+            if (action.type === 'zoomTo' && action.city) {
+                console.log("AI Action: Zoom to", action.city);
+                // We can use the same search logic to find and zoom
+                document.getElementById("searchInput").value = action.city;
+                document.getElementById("searchBtn").click();
+            }
         }
 
-        function sendMessage() {
+        async function sendMessage() {
             const text = chatInput.value.trim();
             if (!text) return;
 
             addMessage(text, 'user');
+            chatHistory.push({ role: 'user', content: text });
             chatInput.value = '';
             chatSend.disabled = true;
 
-            // Simulate AI response
-            setTimeout(() => {
-                addMessage('I received your message about air quality. This is a demo response - in a real implementation, this would connect to an AI service to provide detailed air quality information and analysis.', 'bot');
+            const thinkingMessage = addMessage('Assistant is thinking...', 'bot', true);
+
+            try {
+                const response = await fetch('/.netlify/functions/AQI-Chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMessage: text, history: chatHistory.slice(-8) })
+                });
+
+                chatMessages.removeChild(thinkingMessage);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.reply) {
+                    addMessage(data.reply, 'bot');
+                    chatHistory.push({ role: 'assistant', content: data.reply });
+                }
+                
+                if (data.action) {
+                    handleAIAction(data.action);
+                }
+
+            } catch (error) {
+                console.error("Chat error:", error);
+                if (document.getElementById('thinking-message')) {
+                    chatMessages.removeChild(document.getElementById('thinking-message'));
+                }
+                addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+            } finally {
                 chatSend.disabled = false;
-            }, 1000);
+                chatInput.focus();
+            }
         }
 
         chatSend.addEventListener('click', sendMessage);
         chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+            if (e.key === 'Enter' && !chatSend.disabled) sendMessage();
         });
     }
-    document.addEventListener('DOMContentLoaded', initializeChat);
 
     // --- ESRI and APP LOGIC ---
     require([
@@ -621,9 +672,20 @@
       
       const pm25PopupTemplate = { title: "PM2.5 Reading: {City}, {Country}", content: `<div style='font-size: 1.1em; font-weight: bold; margin-bottom: 5px;'> {value} <span style='font-size:0.8em; color: #bbb;'>μg/m³</span> </div> <hr> <b>Last Updated:</b> {timestamp:DateFormat(selector: 'datetime-short')} <br> <b>Source:</b> {attribution}` };
       
+      // MODIFIED: Added labelingInfo and summaryStatistics for better cluster visualization
       const pm25FeatureReduction = {
           type: "cluster",
           clusterRadius: "80px",
+          labelingInfo: [{
+              deconflictionStrategy: "none",
+              labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" },
+              symbol: {
+                  type: "text",
+                  color: "#000000",
+                  font: { weight: "bold", family: "Inter", size: "12px" }
+              },
+              labelPlacement: "center-center",
+          }],
           popupTemplate: {
               title: "Cluster Summary",
               content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.",
@@ -631,22 +693,32 @@
                   { fieldName: "cluster_count", format: { places: 0, digitSeparator: true } },
                   { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } }
               ]
-          }
+          },
+          summaryStatistics: [{
+              onStatisticField: "value",
+              outStatisticFieldName: "cluster_avg_value",
+              statisticType: "avg"
+          }]
       };
 
-      pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500" });
+      // MODIFIED: Disabled legend for this layer to create a unified legend
+      pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500", legendEnabled: false });
       map.add(pm25Layer);
 
-      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
+      // MODIFIED: Set to be invisible by default
+      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }), visible: false });
       map.add(flowLayer);
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
+      // MODIFIED: Set to be invisible by default
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365`, visible: false });
       map.add(fireLayer);
       
       view.when(() => {
         document.getElementById("loading").style.display = "none";
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
+        // MODIFIED: Pass the map view to the chat initializer
+        document.addEventListener('DOMContentLoaded', () => initializeChat(view));
       });
 
       // Function to calculate US AQI from PM2.5
