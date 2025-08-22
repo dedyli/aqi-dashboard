@@ -621,7 +621,6 @@
       
       const pm25PopupTemplate = { title: "PM2.5 Reading: {City}, {Country}", content: `<div style='font-size: 1.1em; font-weight: bold; margin-bottom: 5px;'> {value} <span style='font-size:0.8em; color: #bbb;'>μg/m³</span> </div> <hr> <b>Last Updated:</b> {timestamp:DateFormat(selector: 'datetime-short')} <br> <b>Source:</b> {attribution}` };
       
-      // FINAL FIX: The labelingInfo object was removed from the cluster configuration to prevent a font-related rendering crash.
       const pm25FeatureReduction = {
           type: "cluster",
           clusterRadius: "80px",
@@ -641,7 +640,7 @@
       flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
       map.add(flowLayer);
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and__Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
       map.add(fireLayer);
       
       view.when(() => {
@@ -761,6 +760,9 @@
             if (cityResults.length === 0) {
                 throw new Error("No valid air quality data received");
             }
+            
+            // This is the diagnostic line you requested
+            console.log("Final city features for the map:", cityResults);
 
             const geojsonObject = { type: "FeatureCollection", features: cityResults };
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
