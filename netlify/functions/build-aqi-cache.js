@@ -2,9 +2,6 @@
 
 const { createClient } = require("@supabase/supabase-js");
 
-// The Supabase client will automatically use the environment variables from your Netlify settings.
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
 /**
  * Calculates the US AQI from a given PM2.5 value.
  * @param {number} pm25 - The PM2.5 concentration.
@@ -114,76 +111,96 @@ const cities = [
     { name: "Auckland", lat: -36.8485, lon: 174.7633 }, { name: "Sofia", lat: 42.6977, lon: 23.3219 }
 ];
 
-exports.handler = async () => {
-    console.log("Scheduled function triggered: Starting to build AQI data cache for Supabase.");
-    
-    let cityResults = [];
-    const batchSize = 10;
-    const delay = 1000; // 1 second delay between batches
+exports.handler = async (event, context) => {
+    // NEW: Add a try-catch block to log any errors
+    try {
+        // NEW: Add a "canary" log to see if the function starts
+        console.log("Function starting...");
 
-    for (let i = 0; i < cities.length; i += batchSize) {
-        const batch = cities.slice(i, i + batchSize);
-        console.log(`Fetching batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(cities.length / batchSize)}...`);
+        // NEW: Check for environment variables
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+            const errorMessage = "Missing Supabase environment variables. Please check SUPABASE_URL and SUPABASE_SERVICE_KEY in Netlify settings.";
+            console.error(errorMessage);
+            return { statusCode: 500, body: errorMessage };
+        }
         
-        const promises = batch.map(async (city, index) => {
-            try {
-                const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&hourly=pm2_5&timezone=auto`;
-                const response = await fetch(apiUrl);
-                if (!response.ok) return null;
-                const data = await response.json();
+        const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        console.log("Supabase client initialized.");
 
-                if (data.hourly && data.hourly.pm2_5) {
-                    let currentPM25 = null, currentTime = null;
-                    // Find the most recent valid reading
-                    for (let j = data.hourly.pm2_5.length - 1; j >= 0; j--) {
-                        if (data.hourly.pm2_5[j] !== null && !isNaN(data.hourly.pm2_5[j])) {
-                            currentPM25 = data.hourly.pm2_5[j];
-                            currentTime = data.hourly.time[j];
-                            break;
+        console.log("Scheduled function triggered: Starting to build AQI data cache for Supabase.");
+        
+        let cityResults = [];
+        const batchSize = 10;
+        const delay = 1000; // 1 second delay between batches
+
+        for (let i = 0; i < cities.length; i += batchSize) {
+            const batch = cities.slice(i, i + batchSize);
+            console.log(`Fetching batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(cities.length / batchSize)}...`);
+            
+            const promises = batch.map(async (city, index) => {
+                try {
+                    const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&hourly=pm2_5&timezone=auto`;
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) return null;
+                    const data = await response.json();
+
+                    if (data.hourly && data.hourly.pm2_5) {
+                        let currentPM25 = null, currentTime = null;
+                        for (let j = data.hourly.pm2_5.length - 1; j >= 0; j--) {
+                            if (data.hourly.pm2_5[j] !== null && !isNaN(data.hourly.pm2_5[j])) {
+                                currentPM25 = data.hourly.pm2_5[j];
+                                currentTime = data.hourly.time[j];
+                                break;
+                            }
+                        }
+                        if (currentPM25 !== null) {
+                            return {
+                                type: "Feature",
+                                geometry: { type: "Point", coordinates: [city.lon, city.lat] },
+                                properties: { 
+                                    ObjectID: i + index + 1,
+                                    city: city.name,
+                                    pm2_5: Math.round(currentPM25 * 10) / 10,
+                                    us_aqi: calculateUSAQI(currentPM25),
+                                    time: currentTime 
+                                },
+                            };
                         }
                     }
-                    if (currentPM25 !== null) {
-                        return {
-                            type: "Feature",
-                            geometry: { type: "Point", coordinates: [city.lon, city.lat] },
-                            properties: { 
-                                ObjectID: i + index + 1,
-                                city: city.name,
-                                pm2_5: Math.round(currentPM25 * 10) / 10,
-                                us_aqi: calculateUSAQI(currentPM25),
-                                time: currentTime 
-                            },
-                        };
-                    }
+                } catch (error) {
+                    console.warn(`Failed for ${city.name}:`, error.message);
                 }
-            } catch (error) {
-                console.warn(`Failed for ${city.name}:`, error.message);
+                return null;
+            });
+
+            const batchResults = await Promise.all(promises);
+            cityResults.push(...batchResults.filter(Boolean));
+            
+            if (i + batchSize < cities.length) {
+                await new Promise(resolve => setTimeout(resolve, delay));
             }
-            return null;
-        });
-
-        const batchResults = await Promise.all(promises);
-        cityResults.push(...batchResults.filter(Boolean)); // Add successful results to the main array
-        
-        // Wait before the next batch to avoid overwhelming the API
-        if (i + batchSize < cities.length) {
-            await new Promise(resolve => setTimeout(resolve, delay));
         }
+
+        const geojsonObject = { type: "FeatureCollection", features: cityResults };
+        
+        console.log("Attempting to save data to Supabase...");
+        const { error } = await supabase
+          .from('cache')
+          .upsert({ name: 'latest-aqi', data: geojsonObject });
+
+        if (error) {
+            console.error("Error saving to Supabase:", error);
+            return { statusCode: 500, body: `Error saving data to Supabase: ${error.message}` };
+        }
+
+        console.log(`✅ AQI data cache successfully built and saved to Supabase.`);
+        return { statusCode: 200, body: `Cache updated and saved to Supabase.` };
+
+    } catch (e) {
+        console.error("A critical error occurred in the handler:", e);
+        return {
+            statusCode: 500,
+            body: `Function handler failed with error: ${e.message}`
+        };
     }
-
-    const geojsonObject = { type: "FeatureCollection", features: cityResults };
-    
-    // Save the data to the 'cache' table in Supabase.
-    // "upsert" will create the row if it doesn't exist, or update it if it does.
-    const { error } = await supabase
-      .from('cache')
-      .upsert({ name: 'latest-aqi', data: geojsonObject });
-
-    if (error) {
-        console.error("Error saving to Supabase:", error);
-        return { statusCode: 500, body: "Error saving data to Supabase." };
-    }
-
-    console.log(`✅ AQI data cache successfully built and saved to Supabase.`);
-    return { statusCode: 200, body: `Cache updated and saved to Supabase.` };
 };
