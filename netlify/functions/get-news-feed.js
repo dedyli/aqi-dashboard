@@ -1,7 +1,5 @@
 // functions/get-news-feed.js
 
-const fetch = require('node-fetch');
-
 // !!! IMPORTANT: REPLACE 'YOUR_GNEWS_API_KEY' WITH YOUR ACTUAL API KEY !!!
 const API_KEY = 'eb6e1360b30c6a7f876690a5ef785d0f';
 

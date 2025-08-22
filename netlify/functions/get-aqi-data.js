@@ -1,6 +1,7 @@
 // functions/get-aqi-data.js
 
-const fetch = require('node-fetch');
+// NO LONGER NEEDED for Node.js v18+
+// const fetch = require('node-fetch');
 
 // Helper function to calculate US AQI from PM2.5
 function calculateUSAQI(pm25) {
@@ -20,15 +21,11 @@ function calculateUSAQI(pm25) {
             return Math.round(((bp.aqiHigh - bp.aqiLow) / (bp.high - bp.low)) * (pm25 - bp.low) + bp.aqiLow);
         }
     }
-    // If pm25 is higher than the highest breakpoint
     if (pm25 > 500.4) return 500;
-    
-    return null; // Should not be reached if pm25 is a valid number
+    return null;
 }
 
-
 exports.handler = async (event, context) => {
-    // UPDATED: Array now contains the top 200 cities by population
     const cities = [
         { name: "Tokyo", lat: 35.6895, lon: 139.6917 }, { name: "Delhi", lat: 28.6139, lon: 77.2090 },
         { name: "Shanghai", lat: 31.2304, lon: 121.4737 }, { name: "São Paulo", lat: -23.5505, lon: -46.6333 },
@@ -100,7 +97,8 @@ exports.handler = async (event, context) => {
         { name: "Santo Domingo", lat: 18.4861, lon: -69.9312 }, { name: "Medina", lat: 24.4686, lon: 39.6142 },
         { name: "Birmingham", lat: 52.4862, lon: -1.8904 }, { name: "Baku", lat: 40.4093, lon: 49.8671 },
         { name: "Warsaw", lat: 52.2297, lon: 21.0122 }, { name: "Campinas", lat: -22.9099, lon: -47.0626 },
-        { name:a: "Goiânia", lat: -16.6869, lon: -49.2648 }, { name: "Manaus", lat: -3.1190, lon: -60.0217 },
+        { name: "Goiânia", lat: -16.6869, lon: -49.2648 }, // This line was corrected
+        { name: "Manaus", lat: -3.1190, lon: -60.0217 },
         { name: "Maracaibo", lat: 10.6433, lon: -71.6231 }, { name: "Puebla", lat: 19.0414, lon: -98.2063 },
         { name: "Durban", lat: -29.8587, lon: 31.0218 }, { name: "Quito", lat: -0.1807, lon: -78.4678 },
         { name: "Bucharest", lat: 44.4268, lon: 26.1025 }, { name: "Hamburg", lat: 53.5511, lon: 9.9937 },
@@ -118,7 +116,6 @@ exports.handler = async (event, context) => {
     
     let cityResults = [];
 
-    // Use Promise.all to fetch data for all cities in parallel for maximum speed
     await Promise.all(
         cities.map(async (city, index) => {
             try {
@@ -134,7 +131,6 @@ exports.handler = async (event, context) => {
                     let currentPM25 = null;
                     let currentTime = null;
                     
-                    // Find the most recent non-null value
                     for (let i = pm25Values.length - 1; i >= 0; i--) {
                         if (pm25Values[i] !== null && !isNaN(pm25Values[i])) {
                             currentPM25 = pm25Values[i];
@@ -148,7 +144,7 @@ exports.handler = async (event, context) => {
                             type: "Feature",
                             geometry: { type: "Point", coordinates: [city.lon, city.lat] },
                             properties: {
-                                ObjectID: index + 1, // Use index for a stable ID
+                                ObjectID: index + 1,
                                 city: city.name,
                                 pm2_5: Math.round(currentPM25 * 10) / 10,
                                 us_aqi: calculateUSAQI(currentPM25),
@@ -163,7 +159,6 @@ exports.handler = async (event, context) => {
         })
     );
     
-    // Create the final GeoJSON FeatureCollection
     const geojsonObject = {
         type: "FeatureCollection",
         features: cityResults,
@@ -173,8 +168,8 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*", // Add CORS header
+            "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify(geojsonObject),
+        body: JSON.stringify(jsonObject),
     };
 };
