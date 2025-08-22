@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        /* RADICAL NEW PALETTE: Deep Space & Liquid Gold */
         --bg-color: #050507;
         --panel-bg: rgba(12, 12, 18, 0.7);
         --panel-border: rgba(255, 215, 0, 0.2);
@@ -22,17 +21,11 @@
         --accent-gold: #FFD700;
         --accent-glow: rgba(255, 215, 0, 0.4);
         --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-
-        /* Sizing & Radius */
         --header-height: 72px;
         --radius: 12px;
         --padding: 20px;
-        
-        /* Fonts */
         --font-display: 'Inter', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
-
-        /* Animation */
         --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -70,10 +63,9 @@
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: 10;
-        pointer-events: none; /* Pass clicks through to the map */
+        pointer-events: none;
     }
 
-    /* --- NEW HEADER --- */
     .main-header {
         position: fixed;
         top: 0;
@@ -113,7 +105,6 @@
         opacity: 0.8;
     }
 
-    /* --- FLOATING PANELS --- */
     .floating-panel {
         position: absolute;
         background-color: var(--panel-bg);
@@ -123,7 +114,7 @@
         backdrop-filter: blur(16px) saturate(120%);
         display: flex;
         flex-direction: column;
-        pointer-events: auto; /* Panels are interactive */
+        pointer-events: auto;
         transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out), border-color 0.3s ease;
         opacity: 0;
         transform: scale(0.95);
@@ -141,19 +132,6 @@
         border-color: var(--panel-border-active);
         box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
         z-index: 16 !important;
-    }
-    
-    .floating-panel.active .panel-header::before {
-        content: '';
-        position: absolute;
-        top: 0; left: -100%;
-        width: 100%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-        animation: activePanelShimmer 3s infinite linear;
-    }
-
-    @keyframes activePanelShimmer {
-        from { left: -100%; } to { left: 100%; }
     }
 
     .panel-header {
@@ -187,44 +165,11 @@
         flex-grow: 1;
     }
     
-    /* Custom Scrollbar for Panels */
     .panel-content::-webkit-scrollbar { width: 6px; }
     .panel-content::-webkit-scrollbar-track { background: transparent; }
     .panel-content::-webkit-scrollbar-thumb { background-color: rgba(255, 215, 0, 0.3); border-radius: 3px; }
     .panel-content::-webkit-scrollbar-thumb:hover { background-color: var(--accent-gold); }
 
-    /* Aurora Background Effect */
-    .panel-aurora {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: -1;
-        overflow: hidden;
-        border-radius: var(--radius);
-    }
-    .panel-aurora::before, .panel-aurora::after {
-        content: '';
-        position: absolute;
-        width: 400px;
-        height: 400px;
-        background-image: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-        opacity: 0.3;
-        animation: aurora-flow 20s infinite linear;
-    }
-    .panel-aurora::after {
-        background-image: radial-gradient(circle, rgba(0, 150, 255, 0.1) 0%, transparent 70%);
-        animation: aurora-flow-2 25s infinite linear;
-    }
-
-    @keyframes aurora-flow {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-    @keyframes aurora-flow-2 {
-        0% { transform: translate(50%, 50%) rotate(0deg); }
-        100% { transform: translate(50%, 50%) rotate(-360deg); }
-    }
-
-    /* --- SPECIFIC PANEL CONTENT STYLES --- */
     .search-input, .search-btn {
         width: 100%;
         padding: 12px 16px;
@@ -248,90 +193,7 @@
         cursor: pointer;
     }
     .search-btn:hover { box-shadow: 0 0 10px var(--accent-glow); }
-    
-    .layer-control {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        font-size: 14px;
-    }
-    .layer-control:not(:last-child) { border-bottom: 1px solid rgba(255,215,0,0.1); }
-    
-    .switch {
-        position: relative; display: inline-block;
-        width: 38px; height: 22px;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-        position: absolute; cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(255,255,255,0.1);
-        transition: .4s; border-radius: 22px;
-    }
-    .slider:before {
-        position: absolute; content: "";
-        height: 16px; width: 16px;
-        left: 3px; bottom: 3px;
-        background-color: white;
-        transition: .4s; border-radius: 50%;
-    }
-    input:checked + .slider { background-color: var(--accent-gold); }
-    input:checked + .slider:before { transform: translateX(16px); }
 
-    /* --- SETTINGS PANEL STYLES --- */
-    .settings-section { margin-bottom: 24px; }
-    .settings-title {
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--text-secondary);
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid var(--panel-border);
-        padding-bottom: 8px;
-    }
-    .basemap-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-    .basemap-option, .preset-btn {
-        padding: 10px;
-        background: rgba(0,0,0,0.2);
-        border: 1px solid var(--panel-border);
-        border-radius: 6px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-        font-size: 14px;
-    }
-    .basemap-option:hover, .preset-btn:hover {
-        border-color: var(--accent-gold);
-        background-color: rgba(255,215,0,0.1);
-    }
-    .basemap-option.active, .preset-btn.active {
-        background-color: var(--accent-gold);
-        color: #050507;
-        font-weight: 600;
-        border-color: var(--accent-gold);
-    }
-    .control-slider label {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-    .control-slider span { font-family: var(--font-mono); color: var(--accent-gold); }
-    input[type="range"] {
-        width: 100%;
-        accent-color: var(--accent-gold);
-    }
-    .preset-buttons { display: flex; gap: 8px; margin-top: 10px; }
-    .preset-btn { flex: 1; }
-
-    /* --- CONTROL DOCK & MAC ANIMATION --- */
     #controlDock {
         position: absolute;
         bottom: 20px;
@@ -363,7 +225,6 @@
         display: grid;
         place-items: center;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        will-change: transform, margin, width, height;
     }
     .dock-btn:hover {
         color: var(--text-primary);
@@ -373,15 +234,6 @@
         color: var(--accent-gold);
         background-color: rgba(255, 215, 0, 0.15);
         border-color: var(--accent-gold);
-    }
-    #controlDock:hover .dock-btn:hover {
-        transform: scale(1.4) translateY(-8px);
-        margin: 0 8px;
-    }
-    #controlDock:hover .dock-btn:hover + .dock-btn,
-    .dock-btn.prev {
-        transform: scale(1.2) translateY(-4px);
-        margin: 0 4px;
     }
 
     #loading { 
@@ -393,23 +245,12 @@
         left: 50%; 
         transform: translate(-50%,-50%);
         z-index: 1000;
+        background: rgba(5,5,7,0.9);
+        padding: 20px 40px;
+        border-radius: 10px;
+        border: 1px solid var(--panel-border);
     }
 
-    /* --- CHAT PANEL SPECIFIC STYLES --- */
-    #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
-    #chatMessages { flex: 1; overflow-y: auto; padding: var(--padding); display: flex; flex-direction: column; gap: 16px; }
-    .message { padding: 12px 16px; border-radius: var(--radius); max-width: 85%; word-wrap: break-word; font-size: 15px; line-height: 1.6; animation: messageSlideIn 0.4s var(--ease-out); }
-    @keyframes messageSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .message.user { align-self: flex-end; background: var(--accent-gradient); color: #050507; font-weight: 500; }
-    .message.bot { align-self: flex-start; background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border: 1px solid var(--panel-border); }
-    #chatInputArea { display: flex; padding: var(--padding); border-top: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); gap: 12px; }
-    #chatInput { flex: 1; padding: 12px 16px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.3); color: var(--text-primary); border-radius: 8px; transition: all 0.2s; }
-    #chatInput:focus { outline: none; border-color: var(--accent-gold); box-shadow: 0 0 10px var(--accent-glow); }
-    #chatSend { padding: 12px 20px; border: none; background: var(--accent-gold); color: #050507; font-weight: 700; cursor: pointer; border-radius: 8px; transition: all 0.3s ease; }
-    #chatSend:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
-    #chatSend:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    /* --- CITY ITEM STYLE for CRITICAL ZONES PANEL --- */
     .city-item { 
         padding: 12px 10px; 
         border-bottom: 1px solid var(--panel-border); 
@@ -427,12 +268,22 @@
         padding: 4px 8px;
         border-radius: 6px;
     }
-    
-    /* --- LEGEND PANEL --- */
-    #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
-    #legend-container .esri-legend { background: transparent !important; box-shadow: none !important; }
-    #legend-container .esri-legend__service-label, 
-    #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
+
+    /* Debug Panel */
+    #debugInfo {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: rgba(0,0,0,0.9);
+        color: var(--accent-gold);
+        padding: 10px;
+        border-radius: 5px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        max-width: 300px;
+        z-index: 1000;
+        border: 1px solid var(--panel-border);
+    }
 </style>
 </head>
 <body>
@@ -447,58 +298,43 @@
 
 <div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
 
+<!-- Debug Panel -->
+<div id="debugInfo" style="display: none;">
+    <div><strong>Debug Info:</strong></div>
+    <div id="debugContent">Starting...</div>
+</div>
+
 <div id="uiContainer">
     <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
         <div class="panel-header"> <span class="panel-icon">🔍</span> <span class="panel-title">Data Explorer</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content"> <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> <button class="search-btn" id="searchBtn">Analyze Location</button> <div id="search-results" style="margin-top: 20px;"></div> </div>
-        <div class="panel-aurora"></div>
+        <div class="panel-content"> 
+            <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> 
+            <button class="search-btn" id="searchBtn">Analyze Location</button> 
+            <div id="search-results" style="margin-top: 20px;"></div> 
+        </div>
     </div>
         
     <div class="floating-panel" id="panel-critical" style="width: 360px; height: 450px; top: calc(var(--header-height) + 16px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🏭</span> <span class="panel-title">Critical AQ Zones</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
         <div class="panel-content" id="topCities"></div>
-        <div class="panel-aurora"></div>
-    </div>
-    
-    <div class="floating-panel" id="panel-chat" style="width: 420px; height: 550px; bottom: 100px; left: 50%; transform: translateX(-50%);">
-        <div class="panel-header"> <span class="panel-icon">💬</span> <span class="panel-title">AI Assistant</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content"> <div id="chatMessages"> <div class="message bot">Ask me about air quality. Try: "What's the PM2.5 in Beijing?" or "Show me the most polluted cities."</div> </div> <div id="chatInputArea"> <input id="chatInput" type="text" placeholder="Ask a question..." /> <button id="chatSend">Send</button> </div> </div>
-        <div class="panel-aurora"></div>
-    </div>
-
-    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 420px;">
-         <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-         <div class="panel-content">
-            <div class="settings-section">
-                <div class="settings-title">Data Layers</div>
-                <div class="layer-control"><span>PM2.5 Stations (OpenAQ)</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>Cities (Open Meteo)</span><label class="switch"><input type="checkbox" id="layerOpenMeteoAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
-            </div>
-            <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
-            <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
-            <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
-         </div>
-         <div class="panel-aurora"></div>
-    </div>
-
-    <div class="floating-panel" id="panel-legend" style="width: 320px; height: auto; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 480px); right: 20px;">
-        <div class="panel-header"> <span class="panel-icon">🗺️</span> <span class="panel-title">Legend</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content" id="legend-container"></div>
-        <div class="panel-aurora"></div>
     </div>
 </div>
 
 <div id="controlDock">
     <button class="dock-btn" data-panel="panel-explorer" title="Data Explorer">🔍</button>
     <button class="dock-btn" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
-    <button class="dock-btn" data-panel="panel-settings" title="Settings">⚙️</button>
-    <button class="dock-btn" data-panel="panel-legend" title="Legend">🗺️</button>
-    <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
 </div>
 
 <script>
+    // Debug function
+    function debug(message) {
+        console.log('[DEBUG]', message);
+        const debugInfo = document.getElementById('debugInfo');
+        const debugContent = document.getElementById('debugContent');
+        debugInfo.style.display = 'block';
+        debugContent.innerHTML += '<br>' + new Date().toLocaleTimeString() + ': ' + message;
+    }
+
     // --- DYNAMIC PANEL & DOCK LOGIC ---
     function initializeUI() {
         const panels = document.querySelectorAll('.floating-panel');
@@ -555,64 +391,16 @@
                 }
             });
         });
-        
-        dockBtns.forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.add('prev');
-            });
-            btn.addEventListener('mouseleave', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.remove('prev');
-            });
-        });
     }
     document.addEventListener('DOMContentLoaded', initializeUI);
-
-    // --- CHAT LOGIC ---
-    function initializeChat() {
-        const chatInput = document.getElementById('chatInput');
-        const chatSend = document.getElementById('chatSend');
-        const chatMessages = document.getElementById('chatMessages');
-
-        function addMessage(text, sender) {
-            const message = document.createElement('div');
-            message.className = `message ${sender}`;
-            message.textContent = text;
-            chatMessages.appendChild(message);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function sendMessage() {
-            const text = chatInput.value.trim();
-            if (!text) return;
-
-            addMessage(text, 'user');
-            chatInput.value = '';
-            chatSend.disabled = true;
-
-            // Simulate AI response
-            setTimeout(() => {
-                addMessage('I received your message about air quality. This is a demo response - in a real implementation, this would connect to an AI service.', 'bot');
-                chatSend.disabled = false;
-            }, 1000);
-        }
-
-        chatSend.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    }
-    document.addEventListener('DOMContentLoaded', initializeChat);
 
     // --- ESRI and APP LOGIC ---
     require([
       "esri/Map","esri/views/MapView", "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
-      "esri/layers/ImageryLayer", "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
-      "esri/widgets/Legend","esri/config", "esri/Graphic"
-    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig, Graphic) {
+      "esri/config", "esri/Graphic"
+    ], function(Map, MapView, FeatureLayer, GeoJSONLayer, esriConfig, Graphic) {
 
-      let openMeteoAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget;
+      let openMeteoAqiLayer;
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -624,75 +412,99 @@
 
       try { esriConfig.request.corsEnabledServers.push(window.location.origin); } catch(e) {}
       
-      const pm25Renderer = { type: "class-breaks", field: "value", classBreakInfos:[ {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:"#fff",width:0.5}},label:"Good (0–10)"}, {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:"#fff",width:0.5}},label:"Moderate (10–25)"}, {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:"#fff",width:0.5}},label:"USG (25–50)"}, {minValue:50.1,maxValue:75,symbol:{type:"simple-marker",size:12,color:"#ff0000",outline:{color:"#fff",width:0.5}},label:"Unhealthy (50–75)"}, {minValue:75.1,maxValue:100,symbol:{type:"simple-marker",size:14,color:"#8f3f97",outline:{color:"#fff",width:0.5}},label:"Very Unhealthy (75–100)"}, {minValue:100.1,maxValue:9999,symbol:{type:"simple-marker",size:16,color:"#7e0023",outline:{color:"#fff",width:0.5}},label:"Hazardous (100+)"} ] };
-      const fireRenderer = { type: "simple", symbol: { type: "simple-marker", style: "circle", color: "#FF5733", size: "8px", outline: { color: [255, 255, 0, 0.5], width: 1.5 } } };
-      
-      const pm25PopupTemplate = { title: "PM2.5 Reading: {City}, {Country}", content: `<div style='font-size: 1.1em; font-weight: bold; margin-bottom: 5px;'> {value} <span style='font-size:0.8em; color: #bbb;'>μg/m³</span> </div> <hr> <b>Last Updated:</b> {timestamp:DateFormat(selector: 'datetime-short')} <br> <b>Source:</b> {attribution}` };
-      const pm25FeatureReduction = { type: "cluster", clusterRadius: "80px", popupTemplate: { title: "Cluster Summary", content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.", fieldInfos: [{ fieldName: "cluster_count", format: { places: 0, digitSeparator: true } }, { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } }] }, labelingInfo: [{ deconflictionStrategy: "none", labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" }, symbol: { type: "text", color: "#050507", font: { weight: "bold", family: "Inter, sans-serif", size: "12px" }, haloColor: "#FFFFFF", haloSize: "1.5px" }, labelPlacement: "center-center" }] };
-
-      pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500" });
-      map.add(pm25Layer);
-
-      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
-      map.add(flowLayer);
-
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
-      map.add(fireLayer);
-      
       view.when(() => {
         document.getElementById("loading").style.display = "none";
-        legendWidget = new Legend({ view, container: "legend-container" });
+        debug("Map initialized successfully");
         loadOpenMeteoAqiData();
       });
 
-      // --- FIXED OPEN METEO AQI DATA LOADING ---
+      // Function to calculate US AQI from PM2.5
+      function calculateUSAQI(pm25) {
+        if (pm25 === null || pm25 === undefined || isNaN(pm25)) return null;
+        
+        // US EPA AQI breakpoints for PM2.5 (24-hour average)
+        const breakpoints = [
+            {low: 0.0, high: 12.0, aqiLow: 0, aqiHigh: 50},
+            {low: 12.1, high: 35.4, aqiLow: 51, aqiHigh: 100},
+            {low: 35.5, high: 55.4, aqiLow: 101, aqiHigh: 150},
+            {low: 55.5, high: 150.4, aqiLow: 151, aqiHigh: 200},
+            {low: 150.5, high: 250.4, aqiLow: 201, aqiHigh: 300},
+            {low: 250.5, high: 500.4, aqiLow: 301, aqiHigh: 500}
+        ];
+        
+        for (let bp of breakpoints) {
+            if (pm25 >= bp.low && pm25 <= bp.high) {
+                return Math.round(((bp.aqiHigh - bp.aqiLow) / (bp.high - bp.low)) * (pm25 - bp.low) + bp.aqiLow);
+            }
+        }
+        
+        // If above 500, return 500+
+        return pm25 > 500.4 ? 500 : null;
+      }
+
+      // --- CORRECTED OPEN METEO AQI DATA LOADING ---
       async function loadOpenMeteoAqiData() {
+        debug("Starting Open Meteo data fetch...");
         const loading = document.getElementById("loading");
-        loading.textContent = "Fetching Open Meteo AQI data...";
+        loading.textContent = "Fetching Open Meteo Air Quality data...";
         loading.style.display = "block";
 
-        // Major world cities with their coordinates
+        // Test cities first
         const cities = [
-            { name: 'Tokyo', lat: 35.6895, lon: 139.6917 }, { name: 'Jakarta', lat: -6.2088, lon: 106.8456 },
-            { name: 'Delhi', lat: 28.6139, lon: 77.2090 }, { name: 'Manila', lat: 14.5995, lon: 120.9842 },
-            { name: 'Sao Paulo', lat: -23.5505, lon: -46.6333 }, { name: 'Seoul', lat: 37.5665, lon: 126.9780 },
-            { name: 'Mumbai', lat: 19.0760, lon: 72.8777 }, { name: 'Shanghai', lat: 31.2304, lon: 121.4737 },
-            { name: 'Mexico City', lat: 19.4326, lon: -99.1332 }, { name: 'Guangzhou', lat: 23.1291, lon: 113.2644 },
-            { name: 'Cairo', lat: 30.0444, lon: 31.2357 }, { name: 'Beijing', lat: 39.9042, lon: 116.4074 },
-            { name: 'New York', lat: 40.7128, lon: -74.0060 }, { name: 'Kolkata', lat: 22.5726, lon: 88.3639 },
-            { name: 'Dhaka', lat: 23.8103, lon: 90.4125 }, { name: 'Buenos Aires', lat: -34.6037, lon: -58.3816 },
-            { name: 'Karachi', lat: 24.8607, lon: 67.0011 }, { name: 'Lagos', lat: 6.5244, lon: 3.3792 },
-            { name: 'Istanbul', lat: 41.0082, lon: 28.9784 }, { name: 'Rio de Janeiro', lat: -22.9068, lon: -43.1729 },
-            { name: 'Kinshasa', lat: -4.4419, lon: 15.2663 }, { name: 'Tianjin', lat: 39.3434, lon: 117.3616 },
-            { name: 'Paris', lat: 48.8566, lon: 2.3522 }, { name: 'Lima', lat: -12.0464, lon: -77.0428 },
-            { name: 'London', lat: 51.5074, lon: -0.1278 }, { name: 'Bangkok', lat: 13.7563, lon: 100.5018 },
-            { name: 'Ho Chi Minh City', lat: 10.8231, lon: 106.6297 }, { name: 'Bogota', lat: 4.7110, lon: -74.0721 },
-            { name: 'Tehran', lat: 35.6892, lon: 51.3890 }, { name: 'Hong Kong', lat: 22.3193, lon: 114.1694 },
-            { name: 'Hanoi', lat: 21.0278, lon: 105.8342 }, { name: 'Moscow', lat: 55.7558, lon: 37.6173 },
-            { name: 'Riyadh', lat: 24.7136, lon: 46.6753 }, { name: 'Singapore', lat: 1.3521, lon: 103.8198 },
-            { name: 'Sydney', lat: -33.8688, lon: 151.2093 }, { name: 'Los Angeles', lat: 34.0522, lon: -118.2437 },
-            { name: 'Chicago', lat: 41.8781, lon: -87.6298 }, { name: 'Madrid', lat: 40.4168, lon: -3.7038 },
-            { name: 'Toronto', lat: 43.6532, lon: -79.3832 }, { name: 'Houston', lat: 29.7604, lon: -95.3698 },
-            { name: 'Berlin', lat: 52.5200, lon: 13.4050 }, { name: 'Rome', lat: 41.9028, lon: 12.4964 }
+            { name: 'Tokyo', lat: 35.6895, lon: 139.6917 },
+            { name: 'Beijing', lat: 39.9042, lon: 116.4074 },
+            { name: 'New York', lat: 40.7128, lon: -74.0060 },
+            { name: 'London', lat: 51.5074, lon: -0.1278 },
+            { name: 'Paris', lat: 48.8566, lon: 2.3522 },
+            { name: 'Delhi', lat: 28.6139, lon: 77.2090 },
+            { name: 'Mumbai', lat: 19.0760, lon: 72.8777 },
+            { name: 'Shanghai', lat: 31.2304, lon: 121.4737 },
+            { name: 'Singapore', lat: 1.3521, lon: 103.8198 },
+            { name: 'Sydney', lat: -33.8688, lon: 151.2093 }
         ];
 
-        try {
-            // **FIX 1: Make individual API calls instead of bulk request**
-            // The Open Meteo API requires separate calls for each location when requesting current data
-            const cityResults = [];
-            
-            for (const city of cities) {
-                try {
-                    // **FIX 2: Use correct current parameters - european_aqi and pm2_5 are available**
-                    const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&current=european_aqi,pm2_5`;
+        debug(`Testing API with ${cities.length} cities`);
+        const cityResults = [];
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const [index, city] of cities.entries()) {
+            try {
+                // CORRECTED: Use hourly=pm2_5 instead of current=
+                const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&hourly=pm2_5&timezone=auto`;
+                
+                debug(`Fetching data for ${city.name}: ${apiUrl}`);
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    debug(`HTTP Error for ${city.name}: ${response.status} ${response.statusText}`);
+                    errorCount++;
+                    continue;
+                }
+                
+                const data = await response.json();
+                debug(`Response for ${city.name}: ${JSON.stringify(data).substring(0, 200)}...`);
+                
+                // CORRECTED: Process hourly data to get most recent value
+                if (data.hourly && data.hourly.pm2_5 && data.hourly.time) {
+                    const times = data.hourly.time;
+                    const pm25Values = data.hourly.pm2_5;
                     
-                    const response = await fetch(apiUrl);
-                    if (!response.ok) continue; // Skip failed requests
+                    // Find the most recent non-null value
+                    let currentPM25 = null;
+                    let currentTime = null;
                     
-                    const data = await response.json();
+                    for (let i = pm25Values.length - 1; i >= 0; i--) {
+                        if (pm25Values[i] !== null && !isNaN(pm25Values[i])) {
+                            currentPM25 = pm25Values[i];
+                            currentTime = times[i];
+                            break;
+                        }
+                    }
                     
-                    // **FIX 3: Handle the correct response structure**
-                    if (data.current && data.current.european_aqi !== null) {
+                    if (currentPM25 !== null) {
+                        const calculatedAQI = calculateUSAQI(currentPM25);
+                        
                         cityResults.push({
                             type: "Feature",
                             geometry: { 
@@ -701,101 +513,137 @@
                             },
                             attributes: {
                                 city: city.name,
-                                european_aqi: data.current.european_aqi,
-                                pm2_5: data.current.pm2_5,
-                                time: data.current.time,
-                                ObjectID: cityResults.length + 1 // Add unique ID for GeoJSONLayer
+                                pm2_5: Math.round(currentPM25 * 10) / 10, // Round to 1 decimal
+                                us_aqi: calculatedAQI,
+                                time: currentTime,
+                                ObjectID: cityResults.length + 1
                             }
                         });
+                        
+                        successCount++;
+                        debug(`✓ ${city.name}: PM2.5=${currentPM25}, AQI=${calculatedAQI}`);
+                    } else {
+                        debug(`✗ ${city.name}: No valid PM2.5 data found`);
+                        errorCount++;
                     }
-                    
-                    // Add small delay to avoid overwhelming the API
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (cityError) {
-                    console.warn(`Failed to fetch data for ${city.name}:`, cityError);
-                    continue; // Skip this city and continue with others
+                } else {
+                    debug(`✗ ${city.name}: Invalid response structure`);
+                    errorCount++;
                 }
+                
+                // Rate limiting
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+            } catch (cityError) {
+                debug(`✗ ${city.name}: ${cityError.message}`);
+                errorCount++;
+                continue;
             }
-
-            if (cityResults.length === 0) {
-                throw new Error("No valid air quality data received");
-            }
-
-            // Create GeoJSON object
-            const geojsonObject = {
-                type: "FeatureCollection",
-                features: cityResults
-            };
-
-            const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-
-            // **FIX 4: Use European AQI renderer (different scale)**
-            const aqiRenderer = {
-              type: "class-breaks",
-              field: "european_aqi",
-              classBreakInfos: [
-                { minValue: 0, maxValue: 20, symbol: { type: "simple-marker", size: 6, color: "#50f0e6", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Good (0-20)" },
-                { minValue: 21, maxValue: 40, symbol: { type: "simple-marker", size: 8, color: "#50ccaa", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Fair (21-40)" },
-                { minValue: 41, maxValue: 60, symbol: { type: "simple-marker", size: 10, color: "#f0e641", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Moderate (41-60)" },
-                { minValue: 61, maxValue: 80, symbol: { type: "simple-marker", size: 12, color: "#ff5050", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Poor (61-80)" },
-                { minValue: 81, maxValue: 100, symbol: { type: "simple-marker", size: 14, color: "#960032", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Very Poor (81-100)" },
-                { minValue: 101, maxValue: 9999, symbol: { type: "simple-marker", size: 16, color: "#7d2181", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Extremely Poor (100+)" }
-              ]
-            };
-            
-            const aqiPopupTemplate = {
-                title: "Air Quality: {city}",
-                content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> European AQI: {european_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
-            };
-
-            // Remove existing layer if it exists
-            if (openMeteoAqiLayer) map.remove(openMeteoAqiLayer);
-            
-            openMeteoAqiLayer = new GeoJSONLayer({
-                url: url,
-                title: "Cities (European AQI)",
-                renderer: aqiRenderer,
-                popupTemplate: aqiPopupTemplate,
-                objectIdField: "ObjectID"
-            });
-            map.add(openMeteoAqiLayer);
-
-            refreshTopCities(cityResults);
-            loading.style.display = "none";
-
-        } catch (error) {
-            console.error("Error fetching Open Meteo AQI data:", error);
-            loading.textContent = `Failed to load AQI data: ${error.message}`;
-            setTimeout(() => loading.style.display = "none", 3000);
         }
+
+        debug(`Data fetch complete: ${successCount} success, ${errorCount} errors`);
+
+        if (cityResults.length === 0) {
+            const errorMsg = "No valid air quality data received from Open Meteo API";
+            debug(`ERROR: ${errorMsg}`);
+            loading.textContent = errorMsg;
+            setTimeout(() => loading.style.display = "none", 5000);
+            return;
+        }
+
+        debug(`Creating GeoJSON with ${cityResults.length} features`);
+
+        // Create GeoJSON object
+        const geojsonObject = {
+            type: "FeatureCollection",
+            features: cityResults
+        };
+
+        const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        // US AQI renderer 
+        const aqiRenderer = {
+          type: "class-breaks",
+          field: "us_aqi",
+          classBreakInfos: [
+            { minValue: 0, maxValue: 50, symbol: { type: "simple-marker", size: 8, color: "#00e400", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Good (0-50)" },
+            { minValue: 51, maxValue: 100, symbol: { type: "simple-marker", size: 10, color: "#ffff00", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Moderate (51-100)" },
+            { minValue: 101, maxValue: 150, symbol: { type: "simple-marker", size: 12, color: "#ff7e00", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Unhealthy for Sensitive Groups (101-150)" },
+            { minValue: 151, maxValue: 200, symbol: { type: "simple-marker", size: 14, color: "#ff0000", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Unhealthy (151-200)" },
+            { minValue: 201, maxValue: 300, symbol: { type: "simple-marker", size: 16, color: "#8f3f97", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Very Unhealthy (201-300)" },
+            { minValue: 301, maxValue: 9999, symbol: { type: "simple-marker", size: 18, color: "#7e0023", outline: { color: [255,255,255,0.8], width: 1 } }, label: "Hazardous (301+)" }
+          ]
+        };
+        
+        const aqiPopupTemplate = {
+            title: "Air Quality: {city}",
+            content: `
+              <div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px; color: #FFD700;'> 
+                US AQI: {us_aqi} 
+              </div> 
+              <hr style='border-color: rgba(255,215,0,0.3); margin: 10px 0;'> 
+              <b>PM2.5:</b> {pm2_5} μg/m³ <br> 
+              <b>Last Updated:</b> {time}<br>
+              <small style='color: #a0a0b0;'>Data from Open-Meteo CAMS</small>
+            `
+        };
+
+        // Remove existing layer if it exists
+        if (openMeteoAqiLayer) {
+            map.remove(openMeteoAqiLayer);
+            debug("Removed existing layer");
+        }
+        
+        openMeteoAqiLayer = new GeoJSONLayer({
+            url: url,
+            title: "Cities (US AQI from PM2.5)",
+            renderer: aqiRenderer,
+            popupTemplate: aqiPopupTemplate,
+            objectIdField: "ObjectID"
+        });
+        
+        map.add(openMeteoAqiLayer);
+        debug("Added GeoJSON layer to map");
+
+        refreshTopCities(cityResults);
+        loading.style.display = "none";
+        debug("✓ Open Meteo data loading complete!");
       }
 
       function refreshTopCities(features) {
           if (!features || features.length === 0) return;
+          
           const topCitiesContainer = document.getElementById("topCities");
           topCitiesContainer.innerHTML = "";
           
+          debug(`Refreshing top cities with ${features.length} cities`);
+          
           const sortedCities = [...features]
-            .filter(f => f.attributes.european_aqi !== null)
-            .sort((a, b) => b.attributes.european_aqi - a.attributes.european_aqi)
-            .slice(0, 20);
+            .filter(f => f.attributes.us_aqi !== null)
+            .sort((a, b) => b.attributes.us_aqi - a.attributes.us_aqi);
 
           sortedCities.forEach(feature => {
-            const { city, european_aqi } = feature.attributes;
-            const aqiVal = european_aqi || 'N/A';
+            const { city, us_aqi, pm2_5 } = feature.attributes;
+            const aqiVal = us_aqi || 'N/A';
             const item = document.createElement("div");
             item.className = "city-item";
-            item.innerHTML = `<span class="city-name">${city}</span><span class="city-aqi">${aqiVal}</span>`;
+            item.innerHTML = `
+              <div>
+                <span class="city-name">${city}</span><br>
+                <small style="color: #a0a0b0;">PM2.5: ${pm2_5} μg/m³</small>
+              </div>
+              <span class="city-aqi">${aqiVal}</span>
+            `;
             
-            const color = getEuropeanAqiColor(aqiVal);
+            const color = getUSAqiColor(aqiVal);
             item.querySelector('.city-aqi').style.backgroundColor = color.bg;
             item.querySelector('.city-aqi').style.color = color.text;
 
             item.addEventListener("click", () => {
                 view.goTo({
                     center: feature.geometry.coordinates,
-                    zoom: 8
+                    zoom: 10
                 }).then(() => {
                     view.openPopup({
                         features: [new Graphic({ geometry: feature.geometry, attributes: feature.attributes })],
@@ -807,17 +655,17 @@
         });
       }
       
-      // **FIX 5: European AQI color scale (different from US AQI)**
-      function getEuropeanAqiColor(aqi) {
-          if (aqi <= 20) return { bg: 'rgba(80, 240, 230, 0.3)', text: '#000' };
-          if (aqi <= 40) return { bg: 'rgba(80, 204, 170, 0.3)', text: '#000' };
-          if (aqi <= 60) return { bg: 'rgba(240, 230, 65, 0.4)', text: '#000' };
-          if (aqi <= 80) return { bg: 'rgba(255, 80, 80, 0.4)', text: '#fff' };
-          if (aqi <= 100) return { bg: 'rgba(150, 0, 50, 0.4)', text: '#fff' };
-          return { bg: 'rgba(125, 33, 129, 0.4)', text: '#fff' };
+      // US AQI color scale
+      function getUSAqiColor(aqi) {
+          if (aqi <= 50) return { bg: 'rgba(0, 228, 0, 0.3)', text: '#000' };
+          if (aqi <= 100) return { bg: 'rgba(255, 255, 0, 0.4)', text: '#000' };
+          if (aqi <= 150) return { bg: 'rgba(255, 126, 0, 0.4)', text: '#fff' };
+          if (aqi <= 200) return { bg: 'rgba(255, 0, 0, 0.4)', text: '#fff' };
+          if (aqi <= 300) return { bg: 'rgba(143, 63, 151, 0.4)', text: '#fff' };
+          return { bg: 'rgba(126, 0, 35, 0.4)', text: '#fff' };
       }
 
-      // --- SEARCH FUNCTIONALITY - FIXED ---
+      // --- SEARCH FUNCTIONALITY ---
       document.getElementById("searchBtn").addEventListener("click", async () => {
           const query = document.getElementById("searchInput").value;
           if (!query) return;
@@ -826,7 +674,9 @@
           resultsContainer.innerHTML = "Searching...";
           
           try {
-            // Step 1: Geocode the city name to get coordinates
+            debug(`Searching for: ${query}`);
+            
+            // Step 1: Geocode the city name
             const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1`;
             const geoResponse = await fetch(geocodeUrl);
             const geoData = await geoResponse.json();
@@ -835,46 +685,70 @@
                 resultsContainer.innerHTML = `City "${query}" not found.`;
                 return;
             }
+            
             const location = geoData.results[0];
             const { latitude, longitude, name, country } = location;
+            debug(`Found location: ${name}, ${country} at ${latitude}, ${longitude}`);
 
-            // Step 2: Fetch AQI for the found coordinates using CORRECT parameters
-            const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=european_aqi,pm2_5`;
+            // Step 2: Fetch AQI for the location
+            const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=pm2_5&timezone=auto`;
             const aqiResponse = await fetch(aqiUrl);
             const aqiData = await aqiResponse.json();
+            
+            debug(`AQI response: ${JSON.stringify(aqiData).substring(0, 100)}...`);
 
-            // Step 3: Go to location and show popup
-            view.goTo({
-                center: [longitude, latitude],
-                zoom: 10
-            }).then(() => {
-                view.openPopup({
-                    title: `Air Quality: ${name}, ${country || ''}`,
-                    content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> European AQI: ${aqiData.current.european_aqi} </div> <hr> <b>PM2.5:</b> ${aqiData.current.pm2_5} μg/m³ <br> <b>Last Updated:</b> ${aqiData.current.time}`,
-                    location: { latitude, longitude }
+            // Process the hourly data to get current conditions
+            let currentPM25 = null;
+            let currentTime = null;
+            
+            if (aqiData.hourly && aqiData.hourly.pm2_5 && aqiData.hourly.time) {
+                const times = aqiData.hourly.time;
+                const pm25Values = aqiData.hourly.pm2_5;
+                
+                for (let i = pm25Values.length - 1; i >= 0; i--) {
+                    if (pm25Values[i] !== null && !isNaN(pm25Values[i])) {
+                        currentPM25 = pm25Values[i];
+                        currentTime = times[i];
+                        break;
+                    }
+                }
+            }
+            
+            if (currentPM25 !== null) {
+                const calculatedAQI = calculateUSAQI(currentPM25);
+                
+                // Step 3: Go to location and show popup
+                view.goTo({
+                    center: [longitude, latitude],
+                    zoom: 10
+                }).then(() => {
+                    view.openPopup({
+                        title: `Air Quality: ${name}, ${country || ''}`,
+                        content: `
+                          <div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px; color: #FFD700;'> 
+                            US AQI: ${calculatedAQI} 
+                          </div> 
+                          <hr style='border-color: rgba(255,215,0,0.3); margin: 10px 0;'> 
+                          <b>PM2.5:</b> ${Math.round(currentPM25 * 10) / 10} μg/m³ <br> 
+                          <b>Last Updated:</b> ${currentTime}<br>
+                          <small style='color: #a0a0b0;'>Data from Open-Meteo CAMS</small>
+                        `,
+                        location: { latitude, longitude }
+                    });
                 });
-            });
-            resultsContainer.innerHTML = "";
+                resultsContainer.innerHTML = "";
+                debug(`✓ Search complete for ${name}`);
+            } else {
+                resultsContainer.innerHTML = "No air quality data available for this location.";
+                debug(`✗ No air quality data for ${name}`);
+            }
 
           } catch (error) {
+            debug(`✗ Search error: ${error.message}`);
             console.error("Search error:", error);
             resultsContainer.innerHTML = "Error analyzing location.";
           }
       });
-
-      // --- LAYER VISIBILITY CONTROLS ---
-      document.getElementById("layerAQI").addEventListener("change", e => { if(pm25Layer) pm25Layer.visible = e.target.checked; });
-      document.getElementById("layerOpenMeteoAQI").addEventListener("change", e => { if (openMeteoAqiLayer) openMeteoAqiLayer.visible = e.target.checked; });
-      document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; });
-      document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; });
-
-      // --- SETTINGS PANEL LOGIC ---
-      document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
-      document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= ${val}`; });
-      
-      const windSpeed = document.getElementById("windSpeed"), density = document.getElementById("windDensity"), trail = document.getElementById("windTrail");
-      [windSpeed, density, trail].forEach(slider => { slider.addEventListener("input", () => { document.getElementById("speedValue").textContent = windSpeed.value; document.getElementById("densityValue").textContent = density.value; document.getElementById("trailValue").textContent = trail.value; if (flowLayer?.renderer?.type === "flow") { flowLayer.renderer.flowSpeed = parseInt(windSpeed.value); flowLayer.renderer.density = parseFloat(density.value); flowLayer.renderer.trailLength = parseInt(trail.value); } }); });
-      document.querySelectorAll(".preset-btn").forEach(btn => { btn.addEventListener("click", function() { const preset = this.dataset.preset; const presets = { subtle: { speed: 3, density: 0.3, trail: 80 }, normal: { speed: 6, density: 0.7, trail: 120 }, intense: { speed: 12, density: 1.0, trail: 180 } }; const config = presets[preset]; if (config) { windSpeed.value = config.speed; density.value = config.density; trail.value = config.trail; windSpeed.dispatchEvent(new Event('input')); document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active")); this.classList.add("active"); } }); });
 
     });
 </script>
