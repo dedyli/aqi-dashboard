@@ -1,0 +1,26 @@
+{
+  "name": "aqi-dashboard",
+  "version": "1.0.0",
+  "description": "Live AQI Dashboard with automated data updates",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'No build step required'",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.0.8",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "aqi",
+    "air-quality",
+    "dashboard",
+    "netlify",
+    "iqair"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
