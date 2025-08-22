@@ -464,8 +464,8 @@
                 <div class="settings-title">Data Layers</div>
                 <div class="layer-control"><span>PM2.5 Stations (OpenAQ)</span><label class="switch"><input type="checkbox" id="layerAQI" checked><span class="slider"></span></label></div>
                 <div class="layer-control"><span>Cities (Open Meteo)</span><label class="switch"><input type="checkbox" id="layerOpenMeteoAQI" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow" checked><span class="slider"></span></label></div>
-                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire" checked><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow"><span class="slider"></span></label></div>
+                <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire"><span class="slider"></span></label></div>
             </div>
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
             <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
@@ -562,10 +562,13 @@
     document.addEventListener('DOMContentLoaded', initializeUI);
 
     // --- CHAT LOGIC ---
+    // This is a simplified version. The full logic is now in the Netlify serverless function.
+    // This frontend code just sends the message and displays the response.
     function initializeChat() {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
         const chatMessages = document.getElementById('chatMessages');
+        let chatHistory = [];
 
         function addMessage(text, sender) {
             const message = document.createElement('div');
@@ -575,19 +578,48 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function sendMessage() {
-            const text = chatInput.value.trim();
-            if (!text) return;
+        async function sendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
 
-            addMessage(text, 'user');
+            addMessage(userMessage, 'user');
             chatInput.value = '';
             chatSend.disabled = true;
 
-            // Simulate AI response
-            setTimeout(() => {
-                addMessage('I received your message about air quality. This is a demo response - in a real implementation, this would connect to an AI service to provide detailed air quality information and analysis.', 'bot');
+            chatHistory.push({ role: 'user', content: userMessage });
+
+            try {
+                const response = await fetch('/.netlify/functions/AQI-Chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMessage: userMessage, history: chatHistory }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const { reply, action } = await response.json();
+                
+                addMessage(reply, 'bot');
+                chatHistory.push({ role: 'assistant', content: reply });
+
+                // Optional: Handle actions returned from the AI
+                // For example, zooming the map to a location.
+                if (action && action.type === 'zoomTo' && action.city) {
+                    // This part would need access to the map 'view' object,
+                    // which requires some refactoring to make it globally accessible.
+                    // For now, we just log the action.
+                    console.log("AI requested map action:", action);
+                }
+
+            } catch (error) {
+                addMessage('Sorry, I am having trouble connecting to the AI assistant.', 'bot');
+                console.error("Chat error:", error);
+            } finally {
                 chatSend.disabled = false;
-            }, 1000);
+                chatInput.focus();
+            }
         }
 
         chatSend.addEventListener('click', sendMessage);
@@ -636,11 +668,13 @@
 
       pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500" });
       map.add(pm25Layer);
-
-      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }) });
+      
+      // MODIFIED: Set visible to false by default
+      flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }), visible: false });
       map.add(flowLayer);
 
-      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365` });
+      // MODIFIED: Set visible to false by default and fixed URL typo
+      fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365`, visible: false });
       map.add(fireLayer);
       
       view.when(() => {
@@ -671,7 +705,7 @@
         return pm25 > 500.4 ? 500 : null;
       }
 
-      // --- FIXED OPEN METEO AQI DATA LOADING ---
+      // --- OPEN METEO AQI DATA LOADING ---
       async function loadOpenMeteoAqiData() {
         const loading = document.getElementById("loading");
         loading.textContent = "Fetching Open Meteo AQI data...";
@@ -705,7 +739,6 @@
 
         try {
             const cityResults = [];
-            let objectId = 1;
             
             for (const city of cities) {
                 try {
@@ -734,19 +767,18 @@
                         if (currentPM25 !== null) {
                             const calculatedAQI = calculateUSAQI(currentPM25);
                             
-                            // FIXED: Use standard GeoJSON "properties" instead of "attributes"
                             cityResults.push({
                                 type: "Feature",
                                 geometry: { 
                                     type: "Point", 
-                                    coordinates: [city.lon, city.lat] // Use original coordinates
+                                    coordinates: [data.longitude, data.latitude] 
                                 },
-                                properties: { // CHANGED: from "attributes" to "properties"
-                                    ObjectID: objectId++,
+                                attributes: {
                                     city: city.name,
                                     pm2_5: Math.round(currentPM25 * 10) / 10,
                                     us_aqi: calculatedAQI,
-                                    time: currentTime
+                                    time: currentTime,
+                                    ObjectID: cityResults.length + 1
                                 }
                             });
                         }
@@ -763,18 +795,7 @@
                 throw new Error("No valid air quality data received");
             }
             
-            console.log(`Successfully fetched data for ${cityResults.length} cities`); // Debug log
-            
-            // Create proper GeoJSON
-            const geojsonObject = { 
-                type: "FeatureCollection", 
-                features: cityResults 
-            };
-            
-            // Debug: log the GeoJSON structure
-            console.log("GeoJSON Object:", geojsonObject);
-            
-            // Create blob URL
+            const geojsonObject = { type: "FeatureCollection", features: cityResults };
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
 
@@ -782,12 +803,12 @@
               type: "class-breaks",
               field: "pm2_5",
               classBreakInfos: [
-                { minValue:0, maxValue:10, symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:[255,255,255,0.8],width:2}}, label:"Good (0–10)"},
-                { minValue:10.1, maxValue:25, symbol:{type:"simple-marker",size:10,color:"#ffff00",outline:{color:[0,0,0,0.8],width:2}}, label:"Moderate (10–25)"},
-                { minValue:25.1, maxValue:50, symbol:{type:"simple-marker",size:12,color:"#ff7e00",outline:{color:[255,255,255,0.8],width:2}}, label:"USG (25–50)"},
-                { minValue:50.1, maxValue:75, symbol:{type:"simple-marker",size:14,color:"#ff0000",outline:{color:[255,255,255,0.8],width:2}}, label:"Unhealthy (50–75)"},
-                { minValue:75.1, maxValue:100, symbol:{type:"simple-marker",size:16,color:"#8f3f97",outline:{color:[255,255,255,0.8],width:2}}, label:"Very Unhealthy (75–100)"},
-                { minValue:100.1, maxValue:9999, symbol:{type:"simple-marker",size:18,color:"#7e0023",outline:{color:[255,255,255,0.8],width:2}}, label:"Hazardous (100+)"}
+                { minValue:0, maxValue:10, symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:[0,0,0,0.2],width:1}}, label:"Good (0–10)"},
+                { minValue:10.1, maxValue:25, symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:[0,0,0,0.2],width:1}}, label:"Moderate (10–25)"},
+                { minValue:25.1, maxValue:50, symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:[0,0,0,0.2],width:1}}, label:"USG (25–50)"},
+                { minValue:50.1, maxValue:75, symbol:{type:"simple-marker",size:12,color:"#ff0000",outline:{color:[0,0,0,0.2],width:1}}, label:"Unhealthy (50–75)"},
+                { minValue:75.1, maxValue:100, symbol:{type:"simple-marker",size:14,color:"#8f3f97",outline:{color:[0,0,0,0.2],width:1}}, label:"Very Unhealthy (75–100)"},
+                { minValue:100.1, maxValue:9999, symbol:{type:"simple-marker",size:16,color:"#7e0023",outline:{color:[0,0,0,0.2],width:1}}, label:"Hazardous (100+)"}
               ]
             };
             
@@ -796,29 +817,24 @@
                 content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: {us_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
             };
 
-            // Remove existing layer if it exists
-            if (openMeteoAqiLayer) {
-                map.remove(openMeteoAqiLayer);
-            }
+            if (openMeteoAqiLayer) map.remove(openMeteoAqiLayer);
             
-            // Create new layer
             openMeteoAqiLayer = new GeoJSONLayer({
                 url: url,
                 title: "Cities (PM2.5 μg/m³)",
                 renderer: pm25CityRenderer,
                 popupTemplate: aqiPopupTemplate,
-                outFields: ["*"], // ADDED: Make sure all fields are available
-                visible: true // ADDED: Explicitly set visibility
+                objectIdField: "ObjectID",
+                fields: [
+                    { name: "ObjectID", alias: "ObjectID", type: "oid" },
+                    { name: "city", alias: "City", type: "string" },
+                    { name: "pm2_5", alias: "PM2.5", type: "double" },
+                    { name: "us_aqi", alias: "US AQI", type: "integer" },
+                    { name: "time", alias: "Time", type: "string" }
+                ]
             });
-
-            // Add to map and wait for it to load
             map.add(openMeteoAqiLayer);
-            
-            // Wait for layer to load before proceeding
-            await openMeteoAqiLayer.when();
-            console.log("Open Meteo layer successfully added to map");
 
-            // Update the critical zones panel
             refreshTopCities(cityResults);
             loading.style.display = "none";
 
@@ -829,19 +845,18 @@
         }
       }
 
-      // FIXED: The refreshTopCities function to work with the new structure
       function refreshTopCities(features) {
           if (!features || features.length === 0) return;
           const topCitiesContainer = document.getElementById("topCities");
           topCitiesContainer.innerHTML = "";
           
           const sortedCities = [...features]
-            .filter(f => f.properties.us_aqi !== null) // CHANGED: properties instead of attributes
-            .sort((a, b) => b.properties.us_aqi - a.properties.us_aqi) // CHANGED: properties instead of attributes
+            .filter(f => f.attributes.us_aqi !== null)
+            .sort((a, b) => b.attributes.us_aqi - a.attributes.us_aqi)
             .slice(0, 20);
 
           sortedCities.forEach(feature => {
-            const { city, us_aqi } = feature.properties; // CHANGED: properties instead of attributes
+            const { city, us_aqi } = feature.attributes;
             const aqiVal = us_aqi || 'N/A';
             const item = document.createElement("div");
             item.className = "city-item";
@@ -858,7 +873,7 @@
                 }).then(() => {
                     const graphic = new Graphic({
                         geometry: { type: "point", coordinates: feature.geometry.coordinates },
-                        attributes: feature.properties // Map properties to attributes for the popup
+                        attributes: feature.attributes
                     });
                     view.openPopup({
                         features: [graphic],
