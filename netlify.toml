@@ -5,12 +5,16 @@
   functions = "netlify/functions"
   publish = "."
 
-# Configuration for our specific scheduled function
-# This tells Netlify to run the 'build-aqi-cache' function at minute 0 of every hour.
+# Ensure functions bundle and include the Blobs SDK
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@netlify/blobs"]
+
+# Run the 'build-aqi-cache' function at minute 0 of every hour
 [functions."build-aqi-cache"]
   schedule = "0 * * * *"
 
-# Redirect rules for API proxy and single-page app routing
+# API proxy and SPA routing
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

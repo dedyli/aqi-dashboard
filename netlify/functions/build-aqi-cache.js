@@ -109,10 +109,10 @@ const cities = [
 ];
 
 exports.handler = async () => {
+    console.log("Scheduled function triggered: Starting to build AQI data cache.");
     
     // Open the Netlify Blobs store (same used by get-aqi-data.js)
-    const store = getStore(\"aqi-data-store\");
-console.log("Scheduled function triggered: Starting to build AQI data cache.");
+    const store = getStore("aqi-data-store");
     
     let cityResults = [];
     const batchSize = 10;
@@ -178,7 +178,6 @@ console.log("Scheduled function triggered: Starting to build AQI data cache.");
         } catch (e) {
             console.warn("Partial write failed:", e.message);
         }
-
         
         // Wait before the next batch to avoid overwhelming the API
         if (i + batchSize < cities.length) {
@@ -186,14 +185,6 @@ console.log("Scheduled function triggered: Starting to build AQI data cache.");
         }
     }
 
-    const geojsonObject = { type: "FeatureCollection", features: cityResults };
-    
-    const store = getStore("aqi-data-store");
-    await store.setJSON("latest-aqi", geojsonObject);
-
-    console.log(`✅ AQI data cache build complete. Saved data for ${cityResults.length} cities.`);
-    
-    return { statusCode: 200, body: `Cache updated with ${cityResults.length} cities.` };
     // Final write: completed FeatureCollection
     try {
         const featureCollection = {
@@ -212,4 +203,15 @@ console.log("Scheduled function triggered: Starting to build AQI data cache.");
         console.warn("Final write failed:", e.message);
     }
 
+    console.log(`AQI cache build complete. Total features: ${cityResults.length}. Blob 'latest-aqi' written.`);
+    return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            ok: true,
+            saved: cityResults.length,
+            key: "latest-aqi",
+            store: "aqi-data-store",
+        }),
+    };
 };
