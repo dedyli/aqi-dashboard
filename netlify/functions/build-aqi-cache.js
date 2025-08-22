@@ -109,7 +109,10 @@ const cities = [
 ];
 
 exports.handler = async () => {
-    console.log("Scheduled function triggered: Starting to build AQI data cache.");
+    
+    // Open the Netlify Blobs store (same used by get-aqi-data.js)
+    const store = getStore(\"aqi-data-store\");
+console.log("Scheduled function triggered: Starting to build AQI data cache.");
     
     let cityResults = [];
     const batchSize = 10;
@@ -158,6 +161,24 @@ exports.handler = async () => {
 
         const batchResults = await Promise.all(promises);
         cityResults.push(...batchResults.filter(Boolean)); // Add successful results to the main array
+        // Write partial progress so the cache is never empty
+        try {
+            const partial = {
+                type: "FeatureCollection",
+                features: cityResults.filter(Boolean),
+                meta: {
+                    status: "partial",
+                    fetched: cityResults.filter(Boolean).length,
+                    total: cities.length,
+                    updated_at: new Date().toISOString()
+                }
+            };
+            await store.set("latest-aqi", { type: "json", value: partial });
+            console.log(`Partial write: ${partial.features.length} features saved so far.`);
+        } catch (e) {
+            console.warn("Partial write failed:", e.message);
+        }
+
         
         // Wait before the next batch to avoid overwhelming the API
         if (i + batchSize < cities.length) {
@@ -173,4 +194,22 @@ exports.handler = async () => {
     console.log(`✅ AQI data cache build complete. Saved data for ${cityResults.length} cities.`);
     
     return { statusCode: 200, body: `Cache updated with ${cityResults.length} cities.` };
+    // Final write: completed FeatureCollection
+    try {
+        const featureCollection = {
+            type: "FeatureCollection",
+            features: cityResults.filter(Boolean),
+            meta: {
+                status: "complete",
+                fetched: cityResults.filter(Boolean).length,
+                total: cities.length,
+                updated_at: new Date().toISOString()
+            }
+        };
+        await store.set("latest-aqi", { type: "json", value: featureCollection });
+        console.log(`Final write complete. Total features: ${featureCollection.features.length}`);
+    } catch (e) {
+        console.warn("Final write failed:", e.message);
+    }
+
 };
