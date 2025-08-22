@@ -620,7 +620,20 @@
       const fireRenderer = { type: "simple", symbol: { type: "simple-marker", style: "circle", color: "#FF5733", size: "8px", outline: { color: [255, 255, 0, 0.5], width: 1.5 } } };
       
       const pm25PopupTemplate = { title: "PM2.5 Reading: {City}, {Country}", content: `<div style='font-size: 1.1em; font-weight: bold; margin-bottom: 5px;'> {value} <span style='font-size:0.8em; color: #bbb;'>μg/m³</span> </div> <hr> <b>Last Updated:</b> {timestamp:DateFormat(selector: 'datetime-short')} <br> <b>Source:</b> {attribution}` };
-      const pm25FeatureReduction = { type: "cluster", clusterRadius: "80px", popupTemplate: { title: "Cluster Summary", content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.", fieldInfos: [{ fieldName: "cluster_count", format: { places: 0, digitSeparator: true } }, { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } }] }, labelingInfo: [{ deconflictionStrategy: "none", labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" }, symbol: { type: "text", color: "#050507", font: { weight: "bold", family: "Inter, sans-serif", size: "12px" }, haloColor: "#FFFFFF", haloSize: "1.5px" }, labelPlacement: "center-center" }] };
+      
+      // FINAL FIX: The labelingInfo object was removed from the cluster configuration to prevent a font-related rendering crash.
+      const pm25FeatureReduction = {
+          type: "cluster",
+          clusterRadius: "80px",
+          popupTemplate: {
+              title: "Cluster Summary",
+              content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.",
+              fieldInfos: [
+                  { fieldName: "cluster_count", format: { places: 0, digitSeparator: true } },
+                  { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } }
+              ]
+          }
+      };
 
       pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500" });
       map.add(pm25Layer);
@@ -641,7 +654,6 @@
       function calculateUSAQI(pm25) {
         if (pm25 === null || pm25 === undefined || isNaN(pm25)) return null;
         
-        // US EPA AQI breakpoints for PM2.5 (24-hour average)
         const breakpoints = [
             {low: 0.0, high: 12.0, aqiLow: 0, aqiHigh: 50},
             {low: 12.1, high: 35.4, aqiLow: 51, aqiHigh: 100},
@@ -666,7 +678,6 @@
         loading.textContent = "Fetching Open Meteo AQI data...";
         loading.style.display = "block";
 
-        // Curated list of major world cities
         const cities = [
             { name: 'Tokyo', lat: 35.6895, lon: 139.6917 }, { name: 'Jakarta', lat: -6.2088, lon: 106.8456 },
             { name: 'Delhi', lat: 28.6139, lon: 77.2090 }, { name: 'Manila', lat: 14.5995, lon: 120.9842 },
@@ -690,19 +701,7 @@
             { name: 'Toronto', lat: 43.6532, lon: -79.3832 }, { name: 'Houston', lat: 29.7604, lon: -95.3698 },
             { name: 'Berlin', lat: 52.5200, lon: 13.4050 }, { name: 'Rome', lat: 41.9028, lon: 12.4964 },
             { name: 'Santiago', lat: -33.4489, lon: -70.6693 }, { name: 'Kuala Lumpur', lat: 3.1390, lon: 101.6869 },
-            { name: 'Johannesburg', lat: -26.2041, lon: 28.0473 }, { name: 'Nairobi', lat: -1.2921, lon: 36.8219 },
-            { name: 'Ankara', lat: 39.9334, lon: 32.8597 }, { name: 'Athens', lat: 37.9838, lon: 23.7275 },
-            { name: 'Vienna', lat: 48.2082, lon: 16.3738 }, { name: 'Warsaw', lat: 52.2297, lon: 21.0122 },
-            { name: 'Lisbon', lat: 38.7223, lon: -9.1393 }, { name: 'Copenhagen', lat: 55.6761, lon: 12.5683 },
-            { name: 'Stockholm', lat: 59.3293, lon: 18.0686 }, { name: 'Oslo', lat: 59.9139, lon: 10.7522 },
-            { name: 'Helsinki', lat: 60.1699, lon: 24.9384 }, { name: 'Dublin', lat: 53.3498, lon: -6.2603 },
-            { name: 'Prague', lat: 50.0755, lon: 14.4378 }, { name: 'Budapest', lat: 47.4979, lon: 19.0402 },
-            { name: 'Kyiv', lat: 50.4501, lon: 30.5234 }, { name: 'Bucharest', lat: 44.4268, lon: 26.1025 },
-            { name: 'Amsterdam', lat: 52.3676, lon: 4.9041 }, { name: 'Brussels', lat: 50.8503, lon: 4.3517 },
-            { name: 'Zurich', lat: 47.3769, lon: 8.5417 }, { name: 'Geneva', lat: 46.2044, lon: 6.1432 },
-            { name: 'Vancouver', lat: 49.2827, lon: -123.1207 }, { name: 'Montreal', lat: 45.5017, lon: -73.5673 },
-            { name: 'Melbourne', lat: -37.8136, lon: 144.9631 }, { name: 'Auckland', lat: -36.8485, lon: 174.7633 },
-            { name: 'Dubai', lat: 25.276987, lon: 55.296249 }, { name: 'Abu Dhabi', lat: 24.4539, lon: 54.3773 },
+            { name: 'Johannesburg', lat: -26.2041, lon: 28.0473 }, { name: 'Nairobi', lat: -1.2921, lon: 36.8219 }
         ];
 
         try {
@@ -767,11 +766,10 @@
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
 
-            // Renderer based on PM2.5 for visual consistency with the OpenAQ layer
             const pm25CityRenderer = {
               type: "class-breaks",
-              field: "pm2_5", // The renderer now uses the pm2_5 field
-              classBreakInfos: [ // These breaks match the OpenAQ layer
+              field: "pm2_5",
+              classBreakInfos: [
                 { minValue:0, maxValue:10, symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:[0,0,0,0.2],width:1}}, label:"Good (0–10)"},
                 { minValue:10.1, maxValue:25, symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:[0,0,0,0.2],width:1}}, label:"Moderate (10–25)"},
                 { minValue:25.1, maxValue:50, symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:[0,0,0,0.2],width:1}}, label:"USG (25–50)"},
@@ -781,22 +779,20 @@
               ]
             };
             
-            // The popup template remains the same, as it's useful to show both values
             const aqiPopupTemplate = {
                 title: "Air Quality: {city}",
                 content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: {us_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
             };
 
-            // Remove existing layer if it exists
             if (openMeteoAqiLayer) map.remove(openMeteoAqiLayer);
             
             openMeteoAqiLayer = new GeoJSONLayer({
                 url: url,
-                title: "Cities (PM2.5 μg/m³)", // UPDATED: Title reflects the new visualization
-                renderer: pm25CityRenderer,   // UPDATED: Use the new PM2.5 renderer
+                title: "Cities (PM2.5 μg/m³)",
+                renderer: pm25CityRenderer,
                 popupTemplate: aqiPopupTemplate,
-                objectIdField: "ObjectID",    // Specify the unique ID field
-                fields: [                     // Define the data schema
+                objectIdField: "ObjectID",
+                fields: [
                     { name: "ObjectID", alias: "ObjectID", type: "oid" },
                     { name: "city", alias: "City", type: "string" },
                     { name: "pm2_5", alias: "PM2.5", type: "double" },
@@ -805,7 +801,6 @@
                 ]
             });
             map.add(openMeteoAqiLayer);
-
 
             refreshTopCities(cityResults);
             loading.style.display = "none";
