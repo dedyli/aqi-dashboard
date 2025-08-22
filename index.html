@@ -23,7 +23,6 @@
         --accent-glow: rgba(255, 215, 0, 0.4);
         --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
 
-
         /* Sizing & Radius */
         --header-height: 72px;
         --radius: 12px;
@@ -114,7 +113,6 @@
         opacity: 0.8;
     }
 
-
     /* --- FLOATING PANELS --- */
     .floating-panel {
         position: absolute;
@@ -142,10 +140,10 @@
     .floating-panel.active {
         border-color: var(--panel-border-active);
         box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
-        z-index: 16 !important; /* Ensure active panel is above header */
+        z-index: 16 !important;
     }
     
-    .floating-panel.active .panel-header::before { /* Shimmer on active panel */
+    .floating-panel.active .panel-header::before {
         content: '';
         position: absolute;
         top: 0; left: -100%;
@@ -341,10 +339,10 @@
         transform: translateX(-50%);
         z-index: 20;
         display: flex;
-        align-items: flex-end; /* Align items to the bottom for animation */
+        align-items: flex-end;
         gap: 8px;
         padding: 8px;
-        height: 70px; /* Provide space for animation */
+        height: 70px;
         background-color: var(--panel-bg);
         border: 1px solid var(--panel-border);
         border-radius: var(--radius);
@@ -358,7 +356,7 @@
         border: 1px solid transparent;
         color: var(--text-secondary);
         width: 44px; height: 44px;
-        margin-bottom: 2px; /* Initial position */
+        margin-bottom: 2px;
         border-radius: 8px;
         font-size: 20px;
         cursor: pointer;
@@ -386,8 +384,16 @@
         margin: 0 4px;
     }
 
-
-    #loading { font-size: 20px; color: var(--accent-gold); text-shadow: 0 0 10px var(--accent-glow); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);}
+    #loading { 
+        font-size: 20px; 
+        color: var(--accent-gold); 
+        text-shadow: 0 0 10px var(--accent-glow); 
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%,-50%);
+        z-index: 1000;
+    }
 
     /* --- CHAT PANEL SPECIFIC STYLES --- */
     #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
@@ -560,14 +566,44 @@
                 if (prev) prev.classList.remove('prev');
             });
         });
-        
     }
     document.addEventListener('DOMContentLoaded', initializeUI);
 
     // --- CHAT LOGIC ---
-    function initializeChat() { /* ... full chat logic from previous version ... */ }
-    document.addEventListener('DOMContentLoaded', initializeChat);
+    function initializeChat() {
+        const chatInput = document.getElementById('chatInput');
+        const chatSend = document.getElementById('chatSend');
+        const chatMessages = document.getElementById('chatMessages');
 
+        function addMessage(text, sender) {
+            const message = document.createElement('div');
+            message.className = `message ${sender}`;
+            message.textContent = text;
+            chatMessages.appendChild(message);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addMessage(text, 'user');
+            chatInput.value = '';
+            chatSend.disabled = true;
+
+            // Simulate AI response
+            setTimeout(() => {
+                addMessage('I received your message about air quality. This is a demo response - in a real implementation, this would connect to an AI service.', 'bot');
+                chatSend.disabled = false;
+            }, 1000);
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initializeChat);
 
     // --- ESRI and APP LOGIC ---
     require([
@@ -609,13 +645,13 @@
         loadOpenMeteoAqiData();
       });
 
-      // --- NEW DATA LOADING AND PROCESSING LOGIC ---
+      // --- FIXED OPEN METEO AQI DATA LOADING ---
       async function loadOpenMeteoAqiData() {
         const loading = document.getElementById("loading");
         loading.textContent = "Fetching Open Meteo AQI data...";
         loading.style.display = "block";
 
-        // Curated list of major world cities
+        // Major world cities with their coordinates
         const cities = [
             { name: 'Tokyo', lat: 35.6895, lon: 139.6917 }, { name: 'Jakarta', lat: -6.2088, lon: 106.8456 },
             { name: 'Delhi', lat: 28.6139, lon: 77.2090 }, { name: 'Manila', lat: 14.5995, lon: 120.9842 },
@@ -637,90 +673,101 @@
             { name: 'Sydney', lat: -33.8688, lon: 151.2093 }, { name: 'Los Angeles', lat: 34.0522, lon: -118.2437 },
             { name: 'Chicago', lat: 41.8781, lon: -87.6298 }, { name: 'Madrid', lat: 40.4168, lon: -3.7038 },
             { name: 'Toronto', lat: 43.6532, lon: -79.3832 }, { name: 'Houston', lat: 29.7604, lon: -95.3698 },
-            { name: 'Berlin', lat: 52.5200, lon: 13.4050 }, { name: 'Rome', lat: 41.9028, lon: 12.4964 },
-            { name: 'Santiago', lat: -33.4489, lon: -70.6693 }, { name: 'Kuala Lumpur', lat: 3.1390, lon: 101.6869 },
-            { name: 'Johannesburg', lat: -26.2041, lon: 28.0473 }, { name: 'Nairobi', lat: -1.2921, lon: 36.8219 },
-            { name: 'Ankara', lat: 39.9334, lon: 32.8597 }, { name: 'Athens', lat: 37.9838, lon: 23.7275 },
-            { name: 'Vienna', lat: 48.2082, lon: 16.3738 }, { name: 'Warsaw', lat: 52.2297, lon: 21.0122 },
-            { name: 'Lisbon', lat: 38.7223, lon: -9.1393 }, { name: 'Copenhagen', lat: 55.6761, lon: 12.5683 },
-            { name: 'Stockholm', lat: 59.3293, lon: 18.0686 }, { name: 'Oslo', lat: 59.9139, lon: 10.7522 },
-            { name: 'Helsinki', lat: 60.1699, lon: 24.9384 }, { name: 'Dublin', lat: 53.3498, lon: -6.2603 },
-            { name: 'Prague', lat: 50.0755, lon: 14.4378 }, { name: 'Budapest', lat: 47.4979, lon: 19.0402 },
-            { name: 'Kyiv', lat: 50.4501, lon: 30.5234 }, { name: 'Bucharest', lat: 44.4268, lon: 26.1025 },
-            { name: 'Amsterdam', lat: 52.3676, lon: 4.9041 }, { name: 'Brussels', lat: 50.8503, lon: 4.3517 },
-            { name: 'Zurich', lat: 47.3769, lon: 8.5417 }, { name: 'Geneva', lat: 46.2044, lon: 6.1432 },
-            { name: 'Vancouver', lat: 49.2827, lon: -123.1207 }, { name: 'Montreal', lat: 45.5017, lon: -73.5673 },
-            { name: 'Melbourne', lat: -37.8136, lon: 144.9631 }, { name: 'Auckland', lat: -36.8485, lon: 174.7633 },
-            { name: 'Dubai', lat: 25.276987, lon: 55.296249 }, { name: 'Abu Dhabi', lat: 24.4539, lon: 54.3773 },
+            { name: 'Berlin', lat: 52.5200, lon: 13.4050 }, { name: 'Rome', lat: 41.9028, lon: 12.4964 }
         ];
-        
-        const latitudes = cities.map(c => c.lat.toFixed(4)).join(',');
-        const longitudes = cities.map(c => c.lon.toFixed(4)).join(',');
-
-        const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitudes}&longitude=${longitudes}&current=us_aqi,pm2_5`;
 
         try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-            const data = await response.json();
+            // **FIX 1: Make individual API calls instead of bulk request**
+            // The Open Meteo API requires separate calls for each location when requesting current data
+            const cityResults = [];
             
-            // Convert API response to GeoJSON Feature Collection
-            const features = data.map((result, index) => {
-                const city = cities[index];
-                return {
-                    type: "Feature",
-                    geometry: { type: "Point", coordinates: [result.longitude, result.latitude] },
-                    attributes: {
-                        city: city.name,
-                        us_aqi: result.current?.us_aqi,
-                        pm2_5: result.current?.pm2_5,
-                        time: result.current?.time
+            for (const city of cities) {
+                try {
+                    // **FIX 2: Use correct current parameters - european_aqi and pm2_5 are available**
+                    const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&current=european_aqi,pm2_5`;
+                    
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) continue; // Skip failed requests
+                    
+                    const data = await response.json();
+                    
+                    // **FIX 3: Handle the correct response structure**
+                    if (data.current && data.current.european_aqi !== null) {
+                        cityResults.push({
+                            type: "Feature",
+                            geometry: { 
+                                type: "Point", 
+                                coordinates: [data.longitude, data.latitude] 
+                            },
+                            attributes: {
+                                city: city.name,
+                                european_aqi: data.current.european_aqi,
+                                pm2_5: data.current.pm2_5,
+                                time: data.current.time,
+                                ObjectID: cityResults.length + 1 // Add unique ID for GeoJSONLayer
+                            }
+                        });
                     }
-                };
-            }).filter(f => f.attributes.us_aqi !== null && f.attributes.us_aqi !== undefined);
+                    
+                    // Add small delay to avoid overwhelming the API
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (cityError) {
+                    console.warn(`Failed to fetch data for ${city.name}:`, cityError);
+                    continue; // Skip this city and continue with others
+                }
+            }
 
+            if (cityResults.length === 0) {
+                throw new Error("No valid air quality data received");
+            }
+
+            // Create GeoJSON object
             const geojsonObject = {
                 type: "FeatureCollection",
-                features: features
+                features: cityResults
             };
 
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
 
+            // **FIX 4: Use European AQI renderer (different scale)**
             const aqiRenderer = {
               type: "class-breaks",
-              field: "us_aqi",
+              field: "european_aqi",
               classBreakInfos: [
-                { minValue: 0, maxValue: 50, symbol: { type: "simple-marker", size: 6, color: "#00e400", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Good (0-50)" },
-                { minValue: 51, maxValue: 100, symbol: { type: "simple-marker", size: 8, color: "#ffff00", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Moderate (51-100)" },
-                { minValue: 101, maxValue: 150, symbol: { type: "simple-marker", size: 10, color: "#ff7e00", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Unhealthy (SG) (101-150)" },
-                { minValue: 151, maxValue: 200, symbol: { type: "simple-marker", size: 12, color: "#ff0000", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Unhealthy (151-200)" },
-                { minValue: 201, maxValue: 300, symbol: { type: "simple-marker", size: 14, color: "#8f3f97", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Very Unhealthy (201-300)" },
-                { minValue: 301, maxValue: 9999, symbol: { type: "simple-marker", size: 16, color: "#7e0023", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Hazardous (301+)" }
+                { minValue: 0, maxValue: 20, symbol: { type: "simple-marker", size: 6, color: "#50f0e6", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Good (0-20)" },
+                { minValue: 21, maxValue: 40, symbol: { type: "simple-marker", size: 8, color: "#50ccaa", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Fair (21-40)" },
+                { minValue: 41, maxValue: 60, symbol: { type: "simple-marker", size: 10, color: "#f0e641", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Moderate (41-60)" },
+                { minValue: 61, maxValue: 80, symbol: { type: "simple-marker", size: 12, color: "#ff5050", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Poor (61-80)" },
+                { minValue: 81, maxValue: 100, symbol: { type: "simple-marker", size: 14, color: "#960032", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Very Poor (81-100)" },
+                { minValue: 101, maxValue: 9999, symbol: { type: "simple-marker", size: 16, color: "#7d2181", outline: { color: [0,0,0,0.2], width: 1 } }, label: "Extremely Poor (100+)" }
               ]
             };
             
             const aqiPopupTemplate = {
                 title: "Air Quality: {city}",
-                content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: {us_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
+                content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> European AQI: {european_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
             };
 
+            // Remove existing layer if it exists
             if (openMeteoAqiLayer) map.remove(openMeteoAqiLayer);
+            
             openMeteoAqiLayer = new GeoJSONLayer({
                 url: url,
-                title: "Cities (US AQI)",
+                title: "Cities (European AQI)",
                 renderer: aqiRenderer,
                 popupTemplate: aqiPopupTemplate,
                 objectIdField: "ObjectID"
             });
             map.add(openMeteoAqiLayer);
 
-            refreshTopCities(features);
+            refreshTopCities(cityResults);
             loading.style.display = "none";
 
         } catch (error) {
             console.error("Error fetching Open Meteo AQI data:", error);
-            loading.textContent = "Failed to load AQI data.";
+            loading.textContent = `Failed to load AQI data: ${error.message}`;
+            setTimeout(() => loading.style.display = "none", 3000);
         }
       }
 
@@ -730,17 +777,18 @@
           topCitiesContainer.innerHTML = "";
           
           const sortedCities = [...features]
-            .sort((a, b) => b.attributes.us_aqi - a.attributes.us_aqi)
+            .filter(f => f.attributes.european_aqi !== null)
+            .sort((a, b) => b.attributes.european_aqi - a.attributes.european_aqi)
             .slice(0, 20);
 
           sortedCities.forEach(feature => {
-            const { city, us_aqi } = feature.attributes;
-            const aqiVal = us_aqi || 'N/A';
+            const { city, european_aqi } = feature.attributes;
+            const aqiVal = european_aqi || 'N/A';
             const item = document.createElement("div");
             item.className = "city-item";
             item.innerHTML = `<span class="city-name">${city}</span><span class="city-aqi">${aqiVal}</span>`;
             
-            const color = getAqiColor(aqiVal);
+            const color = getEuropeanAqiColor(aqiVal);
             item.querySelector('.city-aqi').style.backgroundColor = color.bg;
             item.querySelector('.city-aqi').style.color = color.text;
 
@@ -759,17 +807,17 @@
         });
       }
       
-      function getAqiColor(aqi) {
-          if (aqi <= 50) return { bg: 'rgba(0, 228, 0, 0.3)', text: '#fff' };
-          if (aqi <= 100) return { bg: 'rgba(255, 255, 0, 0.4)', text: '#000' };
-          if (aqi <= 150) return { bg: 'rgba(255, 126, 0, 0.4)', text: '#fff' };
-          if (aqi <= 200) return { bg: 'rgba(255, 0, 0, 0.4)', text: '#fff' };
-          if (aqi <= 300) return { bg: 'rgba(143, 63, 151, 0.4)', text: '#fff' };
-          return { bg: 'rgba(126, 0, 35, 0.4)', text: '#fff' };
+      // **FIX 5: European AQI color scale (different from US AQI)**
+      function getEuropeanAqiColor(aqi) {
+          if (aqi <= 20) return { bg: 'rgba(80, 240, 230, 0.3)', text: '#000' };
+          if (aqi <= 40) return { bg: 'rgba(80, 204, 170, 0.3)', text: '#000' };
+          if (aqi <= 60) return { bg: 'rgba(240, 230, 65, 0.4)', text: '#000' };
+          if (aqi <= 80) return { bg: 'rgba(255, 80, 80, 0.4)', text: '#fff' };
+          if (aqi <= 100) return { bg: 'rgba(150, 0, 50, 0.4)', text: '#fff' };
+          return { bg: 'rgba(125, 33, 129, 0.4)', text: '#fff' };
       }
 
-
-      // --- SEARCH FUNCTIONALITY ---
+      // --- SEARCH FUNCTIONALITY - FIXED ---
       document.getElementById("searchBtn").addEventListener("click", async () => {
           const query = document.getElementById("searchInput").value;
           if (!query) return;
@@ -790,8 +838,8 @@
             const location = geoData.results[0];
             const { latitude, longitude, name, country } = location;
 
-            // Step 2: Fetch AQI for the found coordinates
-            const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi,pm2_5`;
+            // Step 2: Fetch AQI for the found coordinates using CORRECT parameters
+            const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=european_aqi,pm2_5`;
             const aqiResponse = await fetch(aqiUrl);
             const aqiData = await aqiResponse.json();
 
@@ -802,7 +850,7 @@
             }).then(() => {
                 view.openPopup({
                     title: `Air Quality: ${name}, ${country || ''}`,
-                    content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: ${aqiData.current.us_aqi} </div> <hr> <b>PM2.5:</b> ${aqiData.current.pm2_5} μg/m³ <br> <b>Last Updated:</b> ${aqiData.current.time}`,
+                    content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> European AQI: ${aqiData.current.european_aqi} </div> <hr> <b>PM2.5:</b> ${aqiData.current.pm2_5} μg/m³ <br> <b>Last Updated:</b> ${aqiData.current.time}`,
                     location: { latitude, longitude }
                 });
             });
