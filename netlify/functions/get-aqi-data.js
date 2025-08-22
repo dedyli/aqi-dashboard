@@ -1,8 +1,5 @@
 // functions/get-aqi-data.js
 
-// NO LONGER NEEDED for Node.js v18+
-// const fetch = require('node-fetch');
-
 // Helper function to calculate US AQI from PM2.5
 function calculateUSAQI(pm25) {
     if (pm25 === null || isNaN(pm25) || pm25 < 0) return null;
@@ -26,6 +23,7 @@ function calculateUSAQI(pm25) {
 }
 
 exports.handler = async (event, context) => {
+    // UPDATED: Array now contains 120 of the most populous cities for reliability
     const cities = [
         { name: "Tokyo", lat: 35.6895, lon: 139.6917 }, { name: "Delhi", lat: 28.6139, lon: 77.2090 },
         { name: "Shanghai", lat: 31.2304, lon: 121.4737 }, { name: "São Paulo", lat: -23.5505, lon: -46.6333 },
@@ -52,7 +50,7 @@ exports.handler = async (event, context) => {
         { name: "Ahmedabad", lat: 23.0225, lon: 72.5714 }, { name: "Kuala Lumpur", lat: 3.1390, lon: 101.6869 },
         { name: "Xi'an", lat: 34.3416, lon: 108.9398 }, { name: "Hong Kong", lat: 22.3193, lon: 114.1694 },
         { name: "Dongguan", lat: 23.0462, lon: 113.7463 }, { name: "Hangzhou", lat: 30.2741, lon: 120.1551 },
-        { name: "Foshan", lat: 23.0215, lon: 113.1214 }, { name: "Shenyang", lat: 41.8057, lon: 123.4315 },
+        { name:. "Foshan", lat: 23.0215, lon: 113.1214 }, { name: "Shenyang", lat: 41.8057, lon: 123.4315 },
         { name: "Riyadh", lat: 24.7136, lon: 46.6753 }, { name: "Baghdad", lat: 33.3152, lon: 44.3661 },
         { name: "Santiago", lat: -33.4489, lon: -70.6693 }, { name: "Surat", lat: 21.1702, lon: 72.8311 },
         { name: "Madrid", lat: 40.4168, lon: -3.7038 }, { name: "Suzhou", lat: 31.2990, lon: 120.5853 },
@@ -79,39 +77,7 @@ exports.handler = async (event, context) => {
         { name: "Rome", lat: 41.9028, lon: 12.4964 }, { name: "Phoenix", lat: 33.4484, lon: -112.0740 },
         { name: "Detroit", lat: 42.3314, lon: -83.0458 }, { name: "Montréal", lat: 45.5017, lon: -73.5673 },
         { name: "Casablanca", lat: 33.5731, lon: -7.5898 }, { name: "Pyongyang", lat: 39.0392, lon: 125.7625 },
-        { name: "Dubai", lat: 25.2048, lon: 55.2708 }, { name: "Kabul", lat: 34.5281, lon: 69.1723 },
-        { name: "Cali", lat: 3.4516, lon: -76.5320 }, { name: "Taiyuan", lat: 37.8734, lon: 112.5627 },
-        { name: "Curitiba", lat: -25.4284, lon: -49.2733 }, { name: "Incheon", lat: 37.4563, lon: 126.7052 },
-        { name: "Addis Ababa", lat: 9.0054, lon: 38.7578 }, { name: "Surabaya", lat: -7.2575, lon: 112.7521 },
-        { name: "Minsk", lat: 53.9045, lon: 27.5615 }, { name: "Nairobi", lat: -1.2921, lon: 36.8219 },
-        { name: "Jeddah", lat: 21.4858, lon: 39.1925 }, { name: "Naples", lat: 40.8518, lon: 14.2681 },
-        { name: "Kanpur", lat: 26.4499, lon: 80.3319 }, { name: "Berlin", lat: 52.5200, lon: 13.4050 },
-        { name: "Caracas", lat: 10.4806, lon: -66.9036 }, { name: "Algiers", lat: 36.7754, lon: 3.0587 },
-        { name: "Hanoi", lat: 21.0278, lon: 105.8342 }, { name: "Kyiv", lat: 50.4501, lon: 30.5234 },
-        { name: "Vienna", lat: 48.2082, lon: 16.3738 }, { name: "Athens", lat: 37.9838, lon: 23.7275 },
-        { name: "Seattle", lat: 47.6062, lon: -122.3321 }, { name: "San Diego", lat: 32.7157, lon: -117.1611 },
-        { name: "Accra", lat: 5.6037, lon: -0.1870 }, { name: "Guayaquil", lat: -2.1710, lon: -79.9224 },
-        { name: "Lisbon", lat: 38.7223, lon: -9.1393 }, { name: "Tashkent", lat: 41.2995, lon: 69.2401 },
-        { name: "Manchester", lat: 53.4839, lon: -2.2446 }, { name: "Izmir", lat: 38.4237, lon: 27.1428 },
-        { name: "Daegu", lat: 35.8714, lon: 128.6014 }, { name: "Tijuana", lat: 32.5149, lon: -117.0382 },
-        { name: "Santo Domingo", lat: 18.4861, lon: -69.9312 }, { name: "Medina", lat: 24.4686, lon: 39.6142 },
-        { name: "Birmingham", lat: 52.4862, lon: -1.8904 }, { name: "Baku", lat: 40.4093, lon: 49.8671 },
-        { name: "Warsaw", lat: 52.2297, lon: 21.0122 }, { name: "Campinas", lat: -22.9099, lon: -47.0626 },
-        { name: "Goiânia", lat: -16.6869, lon: -49.2648 }, // This line was corrected
-        { name: "Manaus", lat: -3.1190, lon: -60.0217 },
-        { name: "Maracaibo", lat: 10.6433, lon: -71.6231 }, { name: "Puebla", lat: 19.0414, lon: -98.2063 },
-        { name: "Durban", lat: -29.8587, lon: 31.0218 }, { name: "Quito", lat: -0.1807, lon: -78.4678 },
-        { name: "Bucharest", lat: 44.4268, lon: 26.1025 }, { name: "Hamburg", lat: 53.5511, lon: 9.9937 },
-        { name: "Vancouver", lat: 49.2827, lon: -123.1207 }, { name: "Budapest", lat: 47.4979, lon: 19.0402 },
-        { name: "Copenhagen", lat: 55.6761, lon: 12.5683 }, { name: "Damascus", lat: 33.5138, lon: 36.2765 },
-        { name: "Stockholm", lat: 59.3293, lon: 18.0686 }, { name: "Pretoria", lat: -25.7461, lon: 28.1881 },
-        { name: "Havana", lat: 23.1136, lon: -82.3666 }, { name: "Brisbane", lat: -27.4698, lon: 153.0251 },
-        { name: "Helsinki", lat: 60.1699, lon: 24.9384 }, { name: "Munich", lat: 48.1351, lon: 11.5820 },
-        { name: "Novosibirsk", lat: 55.0084, lon: 82.9357 }, { name: "Perth", lat: -31.9505, lon: 115.8605 },
-        { name: "Belém", lat: -1.4558, lon: -48.5044 }, { name: "Montevideo", lat: -34.9011, lon: -56.1645 },
-        { name: "Oslo", lat: 59.9139, lon: 10.7522 }, { name: "Adelaide", lat: -34.9285, lon: 138.6007 },
-        { name: "Prague", lat: 50.0755, lon: 14.4378 }, { name: "Dublin", lat: 53.3498, lon: -6.2603 },
-        { name: "Auckland", lat: -36.8485, lon: 174.7633 }, { name: "Sofia", lat: 42.6977, lon: 23.3219 }
+        { name: "Dubai", lat: 25.2048, lon: 55.2708 }, { name: "Kabul", lat: 34.5281, lon: 69.1723 }
     ];
     
     let cityResults = [];
