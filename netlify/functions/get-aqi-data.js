@@ -1,24 +1,32 @@
 // netlify/functions/get-aqi-data.js
 
-const { getStore } = require("@netlify/blobs");
+const { createClient } = require("@supabase/supabase-js");
+
+// The Supabase client will automatically use the environment variables from your Netlify settings.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 exports.handler = async () => {
-    // Get the blob store we saved to earlier
-    const store = getStore("aqi-data-store");
-    
-    // Retrieve the cached JSON data
-    const aqiData = await store.get("latest-aqi", { type: "json" });
+    // Retrieve the cached data from the 'cache' table where the 'name' column is 'latest-aqi'.
+    const { data, error } = await supabase
+      .from('cache')
+      .select('data')
+      .eq('name', 'latest-aqi')
+      .single(); // We use .single() because we only expect one row with this name.
 
-    if (!aqiData) {
+    // If there's an error or no data is found, return an error response.
+    if (error || !data) {
+        console.error("Error fetching from Supabase:", error);
         return { 
             statusCode: 500, 
-            body: "Could not load AQI data cache. It may not have been generated yet. Please trigger the build-aqi-cache function." 
+            body: "Could not load AQI data from cache. It may not have been generated yet." 
         };
     }
 
+    // If data is found, return it.
     return {
         statusCode: 200,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aqiData),
+        // The 'data' field from the Supabase response contains our GeoJSON object.
+        body: JSON.stringify(data.data),
     };
 };

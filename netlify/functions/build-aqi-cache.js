@@ -1,9 +1,15 @@
 // netlify/functions/build-aqi-cache.js
 
-const { getStore } = require("@netlify/blobs");
-// We use the globally available fetch, no import/require needed for it.
+const { createClient } = require("@supabase/supabase-js");
 
-// Helper function to calculate US AQI
+// The Supabase client will automatically use the environment variables from your Netlify settings.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+/**
+ * Calculates the US AQI from a given PM2.5 value.
+ * @param {number} pm25 - The PM2.5 concentration.
+ * @returns {number|null} The calculated AQI value or null if input is invalid.
+ */
 function calculateUSAQI(pm25) {
     if (pm25 === null || isNaN(pm25) || pm25 < 0) return null;
     const breakpoints = [
@@ -109,10 +115,7 @@ const cities = [
 ];
 
 exports.handler = async () => {
-    console.log("Scheduled function triggered: Starting to build AQI data cache.");
-    
-    // Open the Netlify Blobs store (same used by get-aqi-data.js)
-    const store = getStore("aqi-data-store");
+    console.log("Scheduled function triggered: Starting to build AQI data cache for Supabase.");
     
     let cityResults = [];
     const batchSize = 10;
@@ -161,23 +164,6 @@ exports.handler = async () => {
 
         const batchResults = await Promise.all(promises);
         cityResults.push(...batchResults.filter(Boolean)); // Add successful results to the main array
-        // Write partial progress so the cache is never empty
-        try {
-            const partial = {
-                type: "FeatureCollection",
-                features: cityResults.filter(Boolean),
-                meta: {
-                    status: "partial",
-                    fetched: cityResults.filter(Boolean).length,
-                    total: cities.length,
-                    updated_at: new Date().toISOString()
-                }
-            };
-            await store.set("latest-aqi", { type: "json", value: partial });
-            console.log(`Partial write: ${partial.features.length} features saved so far.`);
-        } catch (e) {
-            console.warn("Partial write failed:", e.message);
-        }
         
         // Wait before the next batch to avoid overwhelming the API
         if (i + batchSize < cities.length) {
@@ -185,33 +171,19 @@ exports.handler = async () => {
         }
     }
 
-    // Final write: completed FeatureCollection
-    try {
-        const featureCollection = {
-            type: "FeatureCollection",
-            features: cityResults.filter(Boolean),
-            meta: {
-                status: "complete",
-                fetched: cityResults.filter(Boolean).length,
-                total: cities.length,
-                updated_at: new Date().toISOString()
-            }
-        };
-        await store.set("latest-aqi", { type: "json", value: featureCollection });
-        console.log(`Final write complete. Total features: ${featureCollection.features.length}`);
-    } catch (e) {
-        console.warn("Final write failed:", e.message);
+    const geojsonObject = { type: "FeatureCollection", features: cityResults };
+    
+    // Save the data to the 'cache' table in Supabase.
+    // "upsert" will create the row if it doesn't exist, or update it if it does.
+    const { error } = await supabase
+      .from('cache')
+      .upsert({ name: 'latest-aqi', data: geojsonObject });
+
+    if (error) {
+        console.error("Error saving to Supabase:", error);
+        return { statusCode: 500, body: "Error saving data to Supabase." };
     }
 
-    console.log(`AQI cache build complete. Total features: ${cityResults.length}. Blob 'latest-aqi' written.`);
-    return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            ok: true,
-            saved: cityResults.length,
-            key: "latest-aqi",
-            store: "aqi-data-store",
-        }),
-    };
+    console.log(`✅ AQI data cache successfully built and saved to Supabase.`);
+    return { statusCode: 200, body: `Cache updated and saved to Supabase.` };
 };
