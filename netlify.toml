@@ -1,12 +1,22 @@
+# netlify.toml
+
+# General build settings
 [build]
-  publish = "."
   functions = "netlify/functions"
+  publish = "."
 
-# Pin the Node runtime used to build & run functions
-[build.environment]
-  NODE_VERSION = "18"
+# Configuration for our specific scheduled function
+# This tells Netlify to run the 'build-aqi-cache' function at minute 0 of every hour.
+[functions."build-aqi-cache"]
+  schedule = "0 * * * *"
 
-[functions]
-  node_bundler = "esbuild"
-  # (optional) include globs if you read files at runtime
-  # included_files = ["some-folder/**"]
+# Redirect rules for API proxy and single-page app routing
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
