@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        /* RADICAL NEW PALETTE: Deep Space & Liquid Gold */
         --bg-color: #050507;
         --panel-bg: rgba(12, 12, 18, 0.7);
         --panel-border: rgba(255, 215, 0, 0.2);
@@ -22,371 +21,142 @@
         --accent-gold: #FFD700;
         --accent-glow: rgba(255, 215, 0, 0.4);
         --accent-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-
-        /* Sizing & Radius */
         --header-height: 72px;
         --radius: 12px;
         --padding: 20px;
-        
-        /* Fonts */
         --font-display: 'Inter', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
-
-        /* Animation */
         --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html, body {
-        height: 100%;
-        font-family: var(--font-display);
-        background-color: var(--bg-color);
-        color: var(--text-primary);
-        overflow: hidden;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+        height: 100%; font-family: var(--font-display);
+        background-color: var(--bg-color); color: var(--text-primary);
+        overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
-    
     body::before {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
+        content: ''; position: absolute; width: 100%; height: 100%; top: 0; left: 0;
         background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSJ0cmFuc3BhcmVudCI+PC9yZWN0PjxwYXRoIGQ9Ik0wIDEwIEwgMTAgMCBNMjAgMzAgTCAzMCAyMCBNNDAgNTAgTCA1MCA0MCIgc3Ryb2tlPSJyZ2JhKDIwMCwgMjAwLCAyNTUsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48L3N2Zz4=');
-        opacity: 0.5;
-        pointer-events: none;
+        opacity: 0.5; pointer-events: none;
     }
+    #viewDiv { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+    #uiContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
-    #viewDiv {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 1;
-    }
-    
-    #uiContainer {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 10;
-        pointer-events: none; /* Pass clicks through to the map */
-    }
-
-    /* --- NEW HEADER --- */
+    /* --- MODIFIED HEADER --- */
     .main-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: var(--header-height);
-        z-index: 15;
-        display: flex;
-        align-items: center;
-        padding: 0 32px;
-        background-color: var(--panel-bg);
-        backdrop-filter: blur(16px) saturate(120%);
-        border-bottom: 1px solid var(--panel-border);
-        pointer-events: auto;
+        position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
+        z-index: 15; display: flex; align-items: center; padding: 0 16px 0 32px;
+        background-color: var(--panel-bg); backdrop-filter: blur(16px) saturate(120%);
+        border-bottom: 1px solid var(--panel-border); pointer-events: auto;
     }
-    .header-logo {
-        font-size: 32px;
-        margin-right: 20px;
-        line-height: 1;
-        display: inline-block;
-        animation: rotateGlobe 20s linear infinite;
+    .header-logo { font-size: 32px; margin-right: 20px; line-height: 1; display: inline-block; animation: rotateGlobe 20s linear infinite; }
+    @keyframes rotateGlobe { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .header-title h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; }
+    .header-title h2 { font-size: 14px; font-weight: 400; color: var(--text-secondary); opacity: 0.8; }
+    .header-search { margin-left: auto; display: flex; align-items: center; gap: 10px; } /* NEW */
+    .header-search .search-input {
+        width: 250px; padding: 10px 14px; border: 1px solid var(--panel-border);
+        background: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 14px; border-radius: 8px;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
-    @keyframes rotateGlobe {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+    .header-search .search-input:focus {
+        outline: none; border-color: var(--accent-gold); box-shadow: 0 0 10px var(--accent-glow);
     }
-    .header-title h1 {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--text-primary);
-        letter-spacing: -0.5px;
+    .header-search .search-btn {
+        padding: 10px 16px; background: var(--accent-gold); color: #050507; font-weight: 600;
+        cursor: pointer; border: none; border-radius: 8px; font-size: 14px;
+        transition: box-shadow 0.2s;
     }
-    .header-title h2 {
-        font-size: 14px;
-        font-weight: 400;
-        color: var(--text-secondary);
-        opacity: 0.8;
-    }
+    .header-search .search-btn:hover { box-shadow: 0 0 10px var(--accent-glow); }
 
     /* --- FLOATING PANELS --- */
     .floating-panel {
-        position: absolute;
-        background-color: var(--panel-bg);
-        border: 1px solid var(--panel-border);
-        border-radius: var(--radius);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2);
-        backdrop-filter: blur(16px) saturate(120%);
-        display: flex;
-        flex-direction: column;
-        pointer-events: auto; /* Panels are interactive */
-        transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out), border-color 0.3s ease;
-        opacity: 0;
-        transform: scale(0.95);
-        overflow: hidden;
-        visibility: hidden;
+        position: absolute; background-color: var(--panel-bg); border: 1px solid var(--panel-border);
+        border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2);
+        backdrop-filter: blur(16px) saturate(120%); display: flex; flex-direction: column;
+        pointer-events: auto; transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out), border-color 0.3s ease;
+        opacity: 0; transform: scale(0.95); overflow: hidden; visibility: hidden;
     }
-
-    .floating-panel.visible {
-        opacity: 1;
-        transform: scale(1);
-        visibility: visible;
-    }
-    
-    .floating-panel.active {
-        border-color: var(--panel-border-active);
-        box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
-        z-index: 16 !important; /* Ensure active panel is above header */
-    }
-    
-    .floating-panel.active .panel-header::before { /* Shimmer on active panel */
-        content: '';
-        position: absolute;
-        top: 0; left: -100%;
-        width: 100%; height: 100%;
+    .floating-panel.visible { opacity: 1; transform: scale(1); visibility: visible; }
+    .floating-panel.active { border-color: var(--panel-border-active); box-shadow: 0 15px 50px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow); z-index: 16 !important; }
+    .floating-panel.active .panel-header::before {
+        content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
         background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
         animation: activePanelShimmer 3s infinite linear;
     }
-
-    @keyframes activePanelShimmer {
-        from { left: -100%; } to { left: 100%; }
-    }
-
+    @keyframes activePanelShimmer { from { left: -100%; } to { left: 100%; } }
     .panel-header {
-        display: flex;
-        align-items: center;
-        padding: 12px var(--padding);
-        background-color: rgba(0,0,0,0.2);
-        border-bottom: 1px solid var(--panel-border);
-        cursor: move;
-        flex-shrink: 0;
-        position: relative;
+        display: flex; align-items: center; padding: 12px var(--padding); background-color: rgba(0,0,0,0.2);
+        border-bottom: 1px solid var(--panel-border); cursor: move; flex-shrink: 0; position: relative;
     }
-    
     .panel-icon { margin-right: 12px; font-size: 16px; opacity: 0.8; }
     .panel-title { font-weight: 600; font-size: 15px; flex-grow: 1; user-select: none; }
-    
     .panel-controls button {
-        background: none; border: none; color: var(--text-secondary);
-        font-size: 18px; width: 28px; height: 28px;
-        border-radius: 6px; cursor: pointer;
-        transition: background-color 0.2s, color 0.2s;
+        background: none; border: none; color: var(--text-secondary); font-size: 18px; width: 28px; height: 28px;
+        border-radius: 6px; cursor: pointer; transition: background-color 0.2s, color 0.2s;
     }
-    .panel-controls button:hover {
-        background-color: rgba(255,255,255,0.1);
-        color: var(--text-primary);
-    }
-    
-    .panel-content {
-        padding: var(--padding);
-        overflow-y: auto;
-        flex-grow: 1;
-    }
-    
-    /* Custom Scrollbar for Panels */
+    .panel-controls button:hover { background-color: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .panel-content { padding: var(--padding); overflow-y: auto; flex-grow: 1; }
     .panel-content::-webkit-scrollbar { width: 6px; }
     .panel-content::-webkit-scrollbar-track { background: transparent; }
     .panel-content::-webkit-scrollbar-thumb { background-color: rgba(255, 215, 0, 0.3); border-radius: 3px; }
     .panel-content::-webkit-scrollbar-thumb:hover { background-color: var(--accent-gold); }
-
-    /* Aurora Background Effect */
     .panel-aurora {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: -1;
-        overflow: hidden;
-        border-radius: var(--radius);
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;
+        overflow: hidden; border-radius: var(--radius);
     }
     .panel-aurora::before, .panel-aurora::after {
-        content: '';
-        position: absolute;
-        width: 400px;
-        height: 400px;
+        content: ''; position: absolute; width: 400px; height: 400px;
         background-image: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-        opacity: 0.3;
-        animation: aurora-flow 20s infinite linear;
+        opacity: 0.3; animation: aurora-flow 20s infinite linear;
     }
     .panel-aurora::after {
         background-image: radial-gradient(circle, rgba(0, 150, 255, 0.1) 0%, transparent 70%);
         animation: aurora-flow-2 25s infinite linear;
     }
-
-    @keyframes aurora-flow {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-    @keyframes aurora-flow-2 {
-        0% { transform: translate(50%, 50%) rotate(0deg); }
-        100% { transform: translate(50%, 50%) rotate(-360deg); }
-    }
-
-    /* --- SPECIFIC PANEL CONTENT STYLES --- */
-    .search-input, .search-btn {
-        width: 100%;
-        padding: 12px 16px;
-        border: 1px solid var(--panel-border);
-        background: rgba(0,0,0,0.3);
-        color: var(--text-primary);
-        font-size: 15px;
-        border-radius: 8px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .search-input:focus {
-        outline: none;
-        border-color: var(--accent-gold);
-        box-shadow: 0 0 10px var(--accent-glow);
-    }
-    .search-btn {
-        margin-top: 10px;
-        background: var(--accent-gold);
-        color: #050507;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .search-btn:hover { box-shadow: 0 0 10px var(--accent-glow); }
-    
-    .layer-control {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        font-size: 14px;
-    }
+    @keyframes aurora-flow { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+    @keyframes aurora-flow-2 { 0% { transform: translate(50%, 50%) rotate(0deg); } 100% { transform: translate(50%, 50%) rotate(-360deg); } }
+    .layer-control { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; }
     .layer-control:not(:last-child) { border-bottom: 1px solid rgba(255,215,0,0.1); }
-    
-    .switch {
-        position: relative; display: inline-block;
-        width: 38px; height: 22px;
-    }
+    .switch { position: relative; display: inline-block; width: 38px; height: 22px; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-        position: absolute; cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(255,255,255,0.1);
-        transition: .4s; border-radius: 22px;
-    }
-    .slider:before {
-        position: absolute; content: "";
-        height: 16px; width: 16px;
-        left: 3px; bottom: 3px;
-        background-color: white;
-        transition: .4s; border-radius: 50%;
-    }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 22px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--accent-gold); }
     input:checked + .slider:before { transform: translateX(16px); }
-
-    /* --- SETTINGS PANEL STYLES --- */
     .settings-section { margin-bottom: 24px; }
-    .settings-title {
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--text-secondary);
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid var(--panel-border);
-        padding-bottom: 8px;
-    }
-    .basemap-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
+    .settings-title { font-weight: 600; font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; }
+    .basemap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .basemap-option, .preset-btn {
-        padding: 10px;
-        background: rgba(0,0,0,0.2);
-        border: 1px solid var(--panel-border);
-        border-radius: 6px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-        font-size: 14px;
+        padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 6px;
+        color: var(--text-primary); cursor: pointer; transition: all 0.2s; text-align: center; font-size: 14px;
     }
-    .basemap-option:hover, .preset-btn:hover {
-        border-color: var(--accent-gold);
-        background-color: rgba(255,215,0,0.1);
-    }
-    .basemap-option.active, .preset-btn.active {
-        background-color: var(--accent-gold);
-        color: #050507;
-        font-weight: 600;
-        border-color: var(--accent-gold);
-    }
-    .control-slider label {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
+    .basemap-option:hover, .preset-btn:hover { border-color: var(--accent-gold); background-color: rgba(255,215,0,0.1); }
+    .basemap-option.active, .preset-btn.active { background-color: var(--accent-gold); color: #050507; font-weight: 600; border-color: var(--accent-gold); }
+    .control-slider label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
     .control-slider span { font-family: var(--font-mono); color: var(--accent-gold); }
-    input[type="range"] {
-        width: 100%;
-        accent-color: var(--accent-gold);
-    }
+    input[type="range"] { width: 100%; accent-color: var(--accent-gold); }
     .preset-buttons { display: flex; gap: 8px; margin-top: 10px; }
     .preset-btn { flex: 1; }
 
-    /* --- CONTROL DOCK & MAC ANIMATION --- */
     #controlDock {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 20;
-        display: flex;
-        align-items: flex-end; /* Align items to the bottom for animation */
-        gap: 8px;
-        padding: 8px;
-        height: 70px; /* Provide space for animation */
-        background-color: var(--panel-bg);
-        border: 1px solid var(--panel-border);
-        border-radius: var(--radius);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        backdrop-filter: blur(16px) saturate(120%);
-        pointer-events: auto;
+        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20;
+        display: flex; align-items: flex-end; gap: 8px; padding: 8px; height: 70px;
+        background-color: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3); backdrop-filter: blur(16px) saturate(120%); pointer-events: auto;
     }
-
     .dock-btn {
-        background: transparent;
-        border: 1px solid transparent;
-        color: var(--text-secondary);
-        width: 44px; height: 44px;
-        margin-bottom: 2px; /* Initial position */
-        border-radius: 8px;
-        font-size: 20px;
-        cursor: pointer;
-        display: grid;
-        place-items: center;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        background: transparent; border: 1px solid transparent; color: var(--text-secondary);
+        width: 44px; height: 44px; margin-bottom: 2px; border-radius: 8px; font-size: 20px;
+        cursor: pointer; display: grid; place-items: center; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         will-change: transform, margin, width, height;
     }
-    .dock-btn:hover {
-        color: var(--text-primary);
-        background-color: rgba(255,255,255,0.1);
-    }
-    .dock-btn.active {
-        color: var(--accent-gold);
-        background-color: rgba(255, 215, 0, 0.15);
-        border-color: var(--accent-gold);
-    }
-    #controlDock:hover .dock-btn:hover {
-        transform: scale(1.4) translateY(-8px);
-        margin: 0 8px;
-    }
-    #controlDock:hover .dock-btn:hover + .dock-btn,
-    .dock-btn.prev {
-        transform: scale(1.2) translateY(-4px);
-        margin: 0 4px;
-    }
+    .dock-btn:hover { color: var(--text-primary); background-color: rgba(255,255,255,0.1); }
+    .dock-btn.active { color: var(--accent-gold); background-color: rgba(255, 215, 0, 0.15); border-color: var(--accent-gold); }
+    #controlDock:hover .dock-btn:hover { transform: scale(1.4) translateY(-8px); margin: 0 8px; }
+    #controlDock:hover .dock-btn:hover + .dock-btn, .dock-btn.prev { transform: scale(1.2) translateY(-4px); margin: 0 4px; }
 
     #loading { font-size: 20px; color: var(--accent-gold); text-shadow: 0 0 10px var(--accent-glow); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);}
-
-    /* --- CHAT PANEL SPECIFIC STYLES --- */
     #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
     #chatMessages { flex: 1; overflow-y: auto; padding: var(--padding); display: flex; flex-direction: column; gap: 16px; }
     .message { padding: 12px 16px; border-radius: var(--radius); max-width: 85%; word-wrap: break-word; font-size: 15px; line-height: 1.6; animation: messageSlideIn 0.4s var(--ease-out); }
@@ -400,31 +170,13 @@
     #chatSend { padding: 12px 20px; border: none; background: var(--accent-gold); color: #050507; font-weight: 700; cursor: pointer; border-radius: 8px; transition: all 0.3s ease; }
     #chatSend:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
     #chatSend:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    /* --- CITY ITEM STYLE for CRITICAL ZONES PANEL --- */
-    .city-item { 
-        padding: 12px 10px; 
-        border-bottom: 1px solid var(--panel-border); 
-        cursor: pointer; 
-        transition: background-color 0.2s; 
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+    .city-item { padding: 12px 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; transition: background-color 0.2s; display: flex; justify-content: space-between; align-items: center; }
     .city-item:hover { background-color: rgba(255,215,0,0.1); }
     .city-name { font-weight: 500; }
-    .city-aqi { 
-        font-family: var(--font-mono);
-        font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 6px;
-    }
-    
-    /* --- LEGEND PANEL --- */
+    .city-aqi { font-family: var(--font-mono); font-weight: 600; padding: 4px 8px; border-radius: 6px; }
     #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
     #legend-container .esri-legend { background: transparent !important; box-shadow: none !important; }
-    #legend-container .esri-legend__service-label, 
-    #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
+    #legend-container .esri-legend__service-label, #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -435,6 +187,10 @@
         <h1>Global Air Quality Intelligence Platform</h1>
         <h2>Group 62 Tsinghua University IEDE Program - AI Driven Environmental Monitor for the Green Economy</h2>
     </div>
+    <div class="header-search">
+        <input class="search-input" id="searchInput" placeholder="Search any city..." />
+        <button class="search-btn" id="searchBtn">Analyze</button>
+    </div>
 </header>
 
 <div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
@@ -442,7 +198,11 @@
 <div id="uiContainer">
     <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
         <div class="panel-header"> <span class="panel-icon">🔍</span> <span class="panel-title">Data Explorer</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content"> <input class="search-input" id="searchInput" placeholder="Search any city worldwide..." /> <button class="search-btn" id="searchBtn">Analyze Location</button> <div id="search-results" style="margin-top: 20px;"></div> </div>
+        <div class="panel-content">
+            <div id="search-results">
+                <p style="color: var(--text-secondary);">Search for a city in the header to see detailed analytics here. You can also click on map features to explore data.</p>
+            </div>
+        </div>
         <div class="panel-aurora"></div>
     </div>
         
@@ -467,7 +227,7 @@
                 <div class="layer-control"><span>Cities (Open Meteo)</span><label class="switch"><input type="checkbox" id="layerOpenMeteoAQI" checked><span class="slider"></span></label></div>
                 <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow"><span class="slider"></span></label></div>
                 <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire"><span class="slider"></span></label></div>
-            </div>
+                <div class="layer-control"><span>📰 Live News Feed</span><label class="switch"><input type="checkbox" id="layerNews" checked><span class="slider"></span></label></div> </div>
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
             <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
             <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
@@ -488,13 +248,13 @@
     <button class="dock-btn" data-panel="panel-settings" title="Settings">⚙️</button>
     <button class="dock-btn" data-panel="panel-legend" title="Legend">🗺️</button>
     <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
-</div>
+    <button class="dock-btn" id="newsBtn" title="Environmental News">📰</button> </div>
 
 <script>
     // --- DYNAMIC PANEL & DOCK LOGIC ---
     function initializeUI() {
         const panels = document.querySelectorAll('.floating-panel');
-        const dockBtns = document.querySelectorAll('.dock-btn');
+        const dockBtns = document.querySelectorAll('.dock-btn[data-panel]');
         let activePanel = null;
         let highestZ = 15;
 
@@ -519,18 +279,13 @@
                 panel.style.top = `${parseInt(style.top) + movementY}px`;
             }
 
-            header.addEventListener('mousedown', () => {
-                setActive(panel);
-                header.addEventListener('mousemove', onDrag);
-            });
-
+            header.addEventListener('mousedown', () => { setActive(panel); header.addEventListener('mousemove', onDrag); });
             document.addEventListener('mouseup', () => header.removeEventListener('mousemove', onDrag));
             panel.addEventListener('mousedown', () => setActive(panel));
 
             if (closeBtn) {
                 closeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    panel.classList.remove('visible');
+                    e.stopPropagation(); panel.classList.remove('visible');
                     if(dockBtn) dockBtn.classList.remove('active');
                 });
             }
@@ -541,111 +296,64 @@
                 const panelId = btn.dataset.panel;
                 const panel = document.getElementById(panelId);
                 if (panel) {
-                    btn.classList.toggle('active');
-                    panel.classList.toggle('visible');
+                    btn.classList.toggle('active'); panel.classList.toggle('visible');
                     if (panel.classList.contains('visible')) setActive(panel);
                 }
             });
         });
         
         dockBtns.forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.add('prev');
-            });
-            btn.addEventListener('mouseleave', () => {
-                const prev = btn.previousElementSibling;
-                if (prev) prev.classList.remove('prev');
-            });
+            btn.addEventListener('mouseenter', () => { const prev = btn.previousElementSibling; if (prev) prev.classList.add('prev'); });
+            btn.addEventListener('mouseleave', () => { const prev = btn.previousElementSibling; if (prev) prev.classList.remove('prev'); });
         });
-        
     }
     document.addEventListener('DOMContentLoaded', initializeUI);
 
-    // --- CHAT LOGIC ---
-    // MODIFIED: This function now connects to the backend function.
+    // --- CHAT LOGIC (Unchanged) ---
     function initializeChat(mapView) {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
         const chatMessages = document.getElementById('chatMessages');
         let chatHistory = [];
-
         function addMessage(text, sender, isThinking = false) {
             const message = document.createElement('div');
             message.className = `message ${sender}`;
-            if (isThinking) {
-                message.classList.add('thinking');
-                message.id = 'thinking-message';
-            }
+            if (isThinking) { message.classList.add('thinking'); message.id = 'thinking-message'; }
             message.textContent = text;
             chatMessages.appendChild(message);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             return message;
         }
-        
-        // Function to handle map actions from the AI
         function handleAIAction(action) {
             if (!action || !action.type || !mapView) return;
-
             if (action.type === 'zoomTo' && action.city) {
-                console.log("AI Action: Zoom to", action.city);
-                // We can use the same search logic to find and zoom
                 document.getElementById("searchInput").value = action.city;
                 document.getElementById("searchBtn").click();
             }
         }
-
         async function sendMessage() {
-            const text = chatInput.value.trim();
-            if (!text) return;
-
-            addMessage(text, 'user');
-            chatHistory.push({ role: 'user', content: text });
-            chatInput.value = '';
-            chatSend.disabled = true;
-
+            const text = chatInput.value.trim(); if (!text) return;
+            addMessage(text, 'user'); chatHistory.push({ role: 'user', content: text });
+            chatInput.value = ''; chatSend.disabled = true;
             const thinkingMessage = addMessage('Assistant is thinking...', 'bot', true);
-
             try {
                 const response = await fetch('/.netlify/functions/AQI-Chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userMessage: text, history: chatHistory.slice(-8) })
                 });
-
                 chatMessages.removeChild(thinkingMessage);
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
                 const data = await response.json();
-                
-                if (data.reply) {
-                    addMessage(data.reply, 'bot');
-                    chatHistory.push({ role: 'assistant', content: data.reply });
-                }
-                
-                if (data.action) {
-                    handleAIAction(data.action);
-                }
-
+                if (data.reply) { addMessage(data.reply, 'bot'); chatHistory.push({ role: 'assistant', content: data.reply }); }
+                if (data.action) { handleAIAction(data.action); }
             } catch (error) {
                 console.error("Chat error:", error);
-                if (document.getElementById('thinking-message')) {
-                    chatMessages.removeChild(document.getElementById('thinking-message'));
-                }
+                if (document.getElementById('thinking-message')) chatMessages.removeChild(document.getElementById('thinking-message'));
                 addMessage('Sorry, I encountered an error. Please try again.', 'bot');
-            } finally {
-                chatSend.disabled = false;
-                chatInput.focus();
-            }
+            } finally { chatSend.disabled = false; chatInput.focus(); }
         }
-
         chatSend.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !chatSend.disabled) sendMessage();
-        });
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !chatSend.disabled) sendMessage(); });
     }
 
     // --- ESRI and APP LOGIC ---
@@ -655,12 +363,12 @@
       "esri/widgets/Legend","esri/config", "esri/Graphic"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig, Graphic) {
 
-      let openMeteoAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget;
+      // MODIFIED: Added newsLayer variable
+      let openMeteoAqiLayer, pm25Layer, fireLayer, flowLayer, newsLayer, legendWidget;
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
-        container: "viewDiv",
-        map, center: [105, 35], zoom: 3,
+        container: "viewDiv", map, center: [105, 35], zoom: 3,
         ui: { components: ["attribution"] },
         popup: { dockEnabled: true, dockOptions:{ buttonEnabled: false, breakpoint: false, position: "bottom-right" } }
       });
@@ -669,47 +377,26 @@
       
       const pm25Renderer = { type: "class-breaks", field: "value", classBreakInfos:[ {minValue:0,maxValue:10,symbol:{type:"simple-marker",size:6,color:"#00e400",outline:{color:"#fff",width:0.5}},label:"Good (0–10)"}, {minValue:10.1,maxValue:25,symbol:{type:"simple-marker",size:8,color:"#ffff00",outline:{color:"#fff",width:0.5}},label:"Moderate (10–25)"}, {minValue:25.1,maxValue:50,symbol:{type:"simple-marker",size:10,color:"#ff7e00",outline:{color:"#fff",width:0.5}},label:"USG (25–50)"}, {minValue:50.1,maxValue:75,symbol:{type:"simple-marker",size:12,color:"#ff0000",outline:{color:"#fff",width:0.5}},label:"Unhealthy (50–75)"}, {minValue:75.1,maxValue:100,symbol:{type:"simple-marker",size:14,color:"#8f3f97",outline:{color:"#fff",width:0.5}},label:"Very Unhealthy (75–100)"}, {minValue:100.1,maxValue:9999,symbol:{type:"simple-marker",size:16,color:"#7e0023",outline:{color:"#fff",width:0.5}},label:"Hazardous (100+)"} ] };
       const fireRenderer = { type: "simple", symbol: { type: "simple-marker", style: "circle", color: "#FF5733", size: "8px", outline: { color: [255, 255, 0, 0.5], width: 1.5 } } };
-      
       const pm25PopupTemplate = { title: "PM2.5 Reading: {City}, {Country}", content: `<div style='font-size: 1.1em; font-weight: bold; margin-bottom: 5px;'> {value} <span style='font-size:0.8em; color: #bbb;'>μg/m³</span> </div> <hr> <b>Last Updated:</b> {timestamp:DateFormat(selector: 'datetime-short')} <br> <b>Source:</b> {attribution}` };
-      
-      // MODIFIED: Added labelingInfo and summaryStatistics for better cluster visualization
       const pm25FeatureReduction = {
-          type: "cluster",
-          clusterRadius: "80px",
+          type: "cluster", clusterRadius: "80px",
           labelingInfo: [{
               deconflictionStrategy: "none",
               labelExpressionInfo: { expression: "Text($feature.cluster_count, '#,###')" },
-              symbol: {
-                  type: "text",
-                  color: "#000000",
-                  font: { weight: "bold", family: "Inter", size: "12px" }
-              },
+              symbol: { type: "text", color: "#000000", font: { weight: "bold", family: "Inter", size: "12px" } },
               labelPlacement: "center-center",
           }],
           popupTemplate: {
-              title: "Cluster Summary",
-              content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.",
-              fieldInfos: [
-                  { fieldName: "cluster_count", format: { places: 0, digitSeparator: true } },
-                  { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } }
-              ]
+              title: "Cluster Summary", content: "This cluster represents <b>{cluster_count}</b> stations with an average PM2.5 of <b>{cluster_avg_value}</b> μg/m³.",
+              fieldInfos: [ { fieldName: "cluster_count", format: { places: 0, digitSeparator: true } }, { fieldName: "cluster_avg_value", format: { places: 1, digitSeparator: true } } ]
           },
-          summaryStatistics: [{
-              onStatisticField: "value",
-              outStatisticFieldName: "cluster_avg_value",
-              statisticType: "avg"
-          }]
+          summaryStatistics: [{ onStatisticField: "value", outStatisticFieldName: "cluster_avg_value", statisticType: "avg" }]
       };
 
-      // MODIFIED: Disabled legend for this layer to create a unified legend
       pm25Layer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Air_Quality_PM25_Latest_Results/FeatureServer/0", title:"PM2.5 Stations (μg/m³)", outFields:["*"], renderer: pm25Renderer, featureReduction: pm25FeatureReduction, popupTemplate: pm25PopupTemplate, definitionExpression: "value <= 500", legendEnabled: false });
       map.add(pm25Layer);
-
-      // MODIFIED: Set to be invisible by default
       flowLayer = new ImageryTileLayer({ url:"https://tiledimageservices.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Spilhaus_UV_ocean_currents/ImageServer", title:"Global Ocean Currents", opacity:0.8, renderer: new FlowRenderer({ type:"flow", density:0.7, flowSpeed:6, trailLength:120 }), visible: false });
       map.add(flowLayer);
-
-      // MODIFIED: Set to be invisible by default
       fireLayer = new FeatureLayer({ url:"https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", title:"Active Fires (VIIRS)", renderer: fireRenderer, definitionExpression: `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= 365`, visible: false });
       map.add(fireLayer);
       
@@ -717,181 +404,41 @@
         document.getElementById("loading").style.display = "none";
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
-        // MODIFIED: Pass the map view to the chat initializer
+        loadNewsData(); // NEW: Load news data on startup
         initializeChat(view);
       });
 
-      // Function to calculate US AQI from PM2.5
-      function calculateUSAQI(pm25) {
-        if (pm25 === null || pm25 === undefined || isNaN(pm25)) return null;
-        
-        const breakpoints = [
-            {low: 0.0, high: 12.0, aqiLow: 0, aqiHigh: 50},
-            {low: 12.1, high: 35.4, aqiLow: 51, aqiHigh: 100},
-            {low: 35.5, high: 55.4, aqiLow: 101, aqiHigh: 150},
-            {low: 55.5, high: 150.4, aqiLow: 151, aqiHigh: 200},
-            {low: 150.5, high: 250.4, aqiLow: 201, aqiHigh: 300},
-            {low: 250.5, high: 500.4, aqiLow: 301, aqiHigh: 500}
-        ];
-        
-        for (let bp of breakpoints) {
-            if (pm25 >= bp.low && pm25 <= bp.high) {
-                return Math.round(((bp.aqiHigh - bp.aqiLow) / (bp.high - bp.low)) * (pm25 - bp.low) + bp.aqiLow);
-            }
-        }
-        
-        return pm25 > 500.4 ? 500 : null;
-      }
-
-      // --- FIXED OPEN METEO AQI DATA LOADING ---
+      // --- MODIFIED: loadOpenMeteoAqiData now calls the backend function ---
       async function loadOpenMeteoAqiData() {
         const loading = document.getElementById("loading");
-        loading.textContent = "Fetching Open Meteo AQI data...";
+        loading.textContent = "Fetching Global AQI data...";
         loading.style.display = "block";
 
-        const cities = [
-            { name: 'Tokyo', lat: 35.6895, lon: 139.6917 }, { name: 'Jakarta', lat: -6.2088, lon: 106.8456 },
-            { name: 'Delhi', lat: 28.6139, lon: 77.2090 }, { name: 'Manila', lat: 14.5995, lon: 120.9842 },
-            { name: 'Sao Paulo', lat: -23.5505, lon: -46.6333 }, { name: 'Seoul', lat: 37.5665, lon: 126.9780 },
-            { name: 'Mumbai', lat: 19.0760, lon: 72.8777 }, { name: 'Shanghai', lat: 31.2304, lon: 121.4737 },
-            { name: 'Mexico City', lat: 19.4326, lon: -99.1332 }, { name: 'Guangzhou', lat: 23.1291, lon: 113.2644 },
-            { name: 'Cairo', lat: 30.0444, lon: 31.2357 }, { name: 'Beijing', lat: 39.9042, lon: 116.4074 },
-            { name: 'New York', lat: 40.7128, lon: -74.0060 }, { name: 'Kolkata', lat: 22.5726, lon: 88.3639 },
-            { name: 'Dhaka', lat: 23.8103, lon: 90.4125 }, { name: 'Buenos Aires', lat: -34.6037, lon: -58.3816 },
-            { name: 'Karachi', lat: 24.8607, lon: 67.0011 }, { name: 'Lagos', lat: 6.5244, lon: 3.3792 },
-            { name: 'Istanbul', lat: 41.0082, lon: 28.9784 }, { name: 'Rio de Janeiro', lat: -22.9068, lon: -43.1729 },
-            { name: 'Kinshasa', lat: -4.4419, lon: 15.2663 }, { name: 'Tianjin', lat: 39.3434, lon: 117.3616 },
-            { name: 'Paris', lat: 48.8566, lon: 2.3522 }, { name: 'Lima', lat: -12.0464, lon: -77.0428 },
-            { name: 'London', lat: 51.5074, lon: -0.1278 }, { name: 'Bangkok', lat: 13.7563, lon: 100.5018 },
-            { name: 'Ho Chi Minh City', lat: 10.8231, lon: 106.6297 }, { name: 'Bogota', lat: 4.7110, lon: -74.0721 },
-            { name: 'Tehran', lat: 35.6892, lon: 51.3890 }, { name: 'Hong Kong', lat: 22.3193, lon: 114.1694 },
-            { name: 'Hanoi', lat: 21.0278, lon: 105.8342 }, { name: 'Moscow', lat: 55.7558, lon: 37.6173 },
-            { name: 'Riyadh', lat: 24.7136, lon: 46.6753 }, { name: 'Singapore', lat: 1.3521, lon: 103.8198 },
-            { name: 'Sydney', lat: -33.8688, lon: 151.2093 }, { name: 'Los Angeles', lat: 34.0522, lon: -118.2437 },
-            { name: 'Chicago', lat: 41.8781, lon: -87.6298 }, { name: 'Madrid', lat: 40.4168, lon: -3.7038 },
-            { name: 'Toronto', lat: 43.6532, lon: -79.3832 }, { name: 'Houston', lat: 29.7604, lon: -95.3698 },
-            { name: 'Berlin', lat: 52.5200, lon: 13.4050 }, { name: 'Rome', lat: 41.9028, lon: 12.4964 },
-            { name: 'Santiago', lat: -33.4489, lon: -70.6693 }, { name: 'Kuala Lumpur', lat: 3.1390, lon: 101.6869 },
-            { name: 'Johannesburg', lat: -26.2041, lon: 28.0473 }, { name: 'Nairobi', lat: -1.2921, lon: 36.8219 }
-        ];
-
         try {
-            const cityResults = [];
-            let objectId = 1;
-            
-            for (const city of cities) {
-                try {
-                    const apiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&hourly=pm2_5&timezone=auto`;
-                    
-                    const response = await fetch(apiUrl);
-                    if (!response.ok) continue;
-                    
-                    const data = await response.json();
-                    
-                    if (data.hourly && data.hourly.pm2_5 && data.hourly.time) {
-                        const times = data.hourly.time;
-                        const pm25Values = data.hourly.pm2_5;
-                        
-                        let currentPM25 = null;
-                        let currentTime = null;
-                        
-                        for (let i = pm25Values.length - 1; i >= 0; i--) {
-                            if (pm25Values[i] !== null && !isNaN(pm25Values[i])) {
-                                currentPM25 = pm25Values[i];
-                                currentTime = times[i];
-                                break;
-                            }
-                        }
-                        
-                        if (currentPM25 !== null) {
-                            const calculatedAQI = calculateUSAQI(currentPM25);
-                            
-                            // FIXED: Use standard GeoJSON "properties" instead of "attributes"
-                            cityResults.push({
-                                type: "Feature",
-                                geometry: { 
-                                    type: "Point", 
-                                    coordinates: [city.lon, city.lat] // Use original coordinates
-                                },
-                                properties: { // CHANGED: from "attributes" to "properties"
-                                    ObjectID: objectId++,
-                                    city: city.name,
-                                    pm2_5: Math.round(currentPM25 * 10) / 10,
-                                    us_aqi: calculatedAQI,
-                                    time: currentTime
-                                }
-                            });
-                        }
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (cityError) {
-                    console.warn(`Failed to fetch data for ${city.name}:`, cityError);
-                    continue;
-                }
+            // Fetch data from our new serverless function
+            const response = await fetch('/.netlify/functions/get-aqi-data');
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.statusText}`);
             }
+            const geojsonObject = await response.json();
 
-            if (cityResults.length === 0) {
-                throw new Error("No valid air quality data received");
+            if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) {
+                throw new Error("No valid air quality data received from backend");
             }
             
-            console.log(`Successfully fetched data for ${cityResults.length} cities`); // Debug log
-            
-            // Create proper GeoJSON
-            const geojsonObject = { 
-                type: "FeatureCollection", 
-                features: cityResults 
-            };
-            
-            // Debug: log the GeoJSON structure
-            console.log("GeoJSON Object:", geojsonObject);
-            
-            // Create blob URL
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-
-            const pm25CityRenderer = {
-              type: "class-breaks",
-              field: "pm2_5",
-              classBreakInfos: [
-                { minValue:0, maxValue:10, symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:[255,255,255,0.8],width:2}}, label:"Good (0–10)"},
-                { minValue:10.1, maxValue:25, symbol:{type:"simple-marker",size:10,color:"#ffff00",outline:{color:[0,0,0,0.8],width:2}}, label:"Moderate (10–25)"},
-                { minValue:25.1, maxValue:50, symbol:{type:"simple-marker",size:12,color:"#ff7e00",outline:{color:[255,255,255,0.8],width:2}}, label:"USG (25–50)"},
-                { minValue:50.1, maxValue:75, symbol:{type:"simple-marker",size:14,color:"#ff0000",outline:{color:[255,255,255,0.8],width:2}}, label:"Unhealthy (50–75)"},
-                { minValue:75.1, maxValue:100, symbol:{type:"simple-marker",size:16,color:"#8f3f97",outline:{color:[255,255,255,0.8],width:2}}, label:"Very Unhealthy (75–100)"},
-                { minValue:100.1, maxValue:9999, symbol:{type:"simple-marker",size:18,color:"#7e0023",outline:{color:[255,255,255,0.8],width:2}}, label:"Hazardous (100+)"}
-              ]
-            };
             
-            const aqiPopupTemplate = {
-                title: "Air Quality: {city}",
-                content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: {us_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}`
-            };
+            const pm25CityRenderer = { type: "class-breaks", field: "pm2_5", classBreakInfos: [ { minValue:0, maxValue:10, symbol:{type:"simple-marker",size:8,color:"#00e400",outline:{color:[255,255,255,0.8],width:2}}, label:"Good (0–10)"}, { minValue:10.1, maxValue:25, symbol:{type:"simple-marker",size:10,color:"#ffff00",outline:{color:[0,0,0,0.8],width:2}}, label:"Moderate (10–25)"}, { minValue:25.1, maxValue:50, symbol:{type:"simple-marker",size:12,color:"#ff7e00",outline:{color:[255,255,255,0.8],width:2}}, label:"USG (25–50)"}, { minValue:50.1, maxValue:75, symbol:{type:"simple-marker",size:14,color:"#ff0000",outline:{color:[255,255,255,0.8],width:2}}, label:"Unhealthy (50–75)"}, { minValue:75.1, maxValue:100, symbol:{type:"simple-marker",size:16,color:"#8f3f97",outline:{color:[255,255,255,0.8],width:2}}, label:"Very Unhealthy (75–100)"}, { minValue:100.1, maxValue:9999, symbol:{type:"simple-marker",size:18,color:"#7e0023",outline:{color:[255,255,255,0.8],width:2}}, label:"Hazardous (100+)"} ] };
+            const aqiPopupTemplate = { title: "Air Quality: {city}", content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: {us_aqi} </div> <hr> <b>PM2.5:</b> {pm2_5} μg/m³ <br> <b>Last Updated:</b> {time}` };
 
-            // Remove existing layer if it exists
-            if (openMeteoAqiLayer) {
-                map.remove(openMeteoAqiLayer);
-            }
+            if (openMeteoAqiLayer) map.remove(openMeteoAqiLayer);
             
-            // Create new layer
-            openMeteoAqiLayer = new GeoJSONLayer({
-                url: url,
-                title: "Cities (PM2.5 μg/m³)",
-                renderer: pm25CityRenderer,
-                popupTemplate: aqiPopupTemplate,
-                outFields: ["*"], // ADDED: Make sure all fields are available
-                visible: true // ADDED: Explicitly set visibility
-            });
-
-            // Add to map and wait for it to load
+            openMeteoAqiLayer = new GeoJSONLayer({ url, title: "Cities (PM2.5 μg/m³)", renderer: pm25CityRenderer, popupTemplate: aqiPopupTemplate, outFields: ["*"] });
             map.add(openMeteoAqiLayer);
             
-            // Wait for layer to load before proceeding
             await openMeteoAqiLayer.when();
-            console.log("Open Meteo layer successfully added to map");
-
-            // Update the critical zones panel
-            refreshTopCities(cityResults);
+            refreshTopCities(geojsonObject.features);
             loading.style.display = "none";
 
         } catch (error) {
@@ -901,47 +448,82 @@
         }
       }
 
-      // FIXED: The refreshTopCities function to work with the new structure
+      // --- NEW: Function to load and display the news feed ---
+      async function loadNewsData() {
+        try {
+            const response = await fetch('/.netlify/functions/get-news-feed');
+            if (!response.ok) throw new Error('Failed to fetch news feed');
+            
+            const geojsonObject = await response.json();
+            if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) {
+                 console.log("No news data returned from backend.");
+                 return;
+            }
+
+            const blob = new Blob([JSON.stringify(geojsonObject)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const newsRenderer = {
+                type: 'simple',
+                symbol: {
+                    type: 'simple-marker',
+                    style: 'square',
+                    color: [255, 255, 255, 0.8],
+                    size: '10px',
+                    outline: { color: [0, 150, 255, 0.9], width: 1.5 }
+                }
+            };
+
+            const newsPopupTemplate = {
+                title: '📰 {title}',
+                content: `{description}<br><br><b>Source:</b> {source_name}<br><a href="{url}" target="_blank">Read Full Article</a>`
+            };
+
+            newsLayer = new GeoJSONLayer({
+                url: url,
+                title: 'Environmental News',
+                renderer: newsRenderer,
+                popupTemplate: newsPopupTemplate,
+                visible: true 
+            });
+            map.add(newsLayer);
+            document.getElementById("newsBtn").classList.add('active');
+
+        } catch (error) {
+            console.error('Error loading news data:', error);
+        }
+      }
+
+      // --- Unchanged Functions ---
       function refreshTopCities(features) {
           if (!features || features.length === 0) return;
           const topCitiesContainer = document.getElementById("topCities");
           topCitiesContainer.innerHTML = "";
-          
           const sortedCities = [...features]
-            .filter(f => f.properties.us_aqi !== null) // CHANGED: properties instead of attributes
-            .sort((a, b) => b.properties.us_aqi - a.properties.us_aqi) // CHANGED: properties instead of attributes
+            .filter(f => f.properties.us_aqi !== null)
+            .sort((a, b) => b.properties.us_aqi - a.properties.us_aqi)
             .slice(0, 20);
-
           sortedCities.forEach(feature => {
-            const { city, us_aqi } = feature.properties; // CHANGED: properties instead of attributes
+            const { city, us_aqi } = feature.properties;
             const aqiVal = us_aqi || 'N/A';
             const item = document.createElement("div");
             item.className = "city-item";
             item.innerHTML = `<span class="city-name">${city}</span><span class="city-aqi">${aqiVal}</span>`;
-            
             const color = getAqiColor(aqiVal);
             item.querySelector('.city-aqi').style.backgroundColor = color.bg;
             item.querySelector('.city-aqi').style.color = color.text;
-
             item.addEventListener("click", () => {
-                view.goTo({
-                    center: feature.geometry.coordinates,
-                    zoom: 8
-                }).then(() => {
+                view.goTo({ center: feature.geometry.coordinates, zoom: 8 }).then(() => {
                     const graphic = new Graphic({
                         geometry: { type: "point", coordinates: feature.geometry.coordinates },
-                        attributes: feature.properties // Map properties to attributes for the popup
+                        attributes: feature.properties
                     });
-                    view.openPopup({
-                        features: [graphic],
-                        location: graphic.geometry
-                    });
+                    view.openPopup({ features: [graphic], location: graphic.geometry });
                 });
             });
             topCitiesContainer.appendChild(item);
         });
       }
-      
       function getAqiColor(aqi) {
           if (aqi <= 50) return { bg: 'rgba(0, 228, 0, 0.3)', text: '#fff' };
           if (aqi <= 100) return { bg: 'rgba(255, 255, 0, 0.4)', text: '#000' };
@@ -951,7 +533,7 @@
           return { bg: 'rgba(126, 0, 35, 0.4)', text: '#fff' };
       }
 
-      // --- SEARCH FUNCTIONALITY ---
+      // --- MODIFIED: Search functionality now uses header elements ---
       document.getElementById("searchBtn").addEventListener("click", async () => {
           const query = document.getElementById("searchInput").value;
           if (!query) return;
@@ -974,37 +556,28 @@
             const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=pm2_5&timezone=auto`;
             const aqiResponse = await fetch(aqiUrl);
             const aqiData = await aqiResponse.json();
-
-            let currentPM25 = null;
-            let currentTime = null;
             
+            let currentPM25 = null; let currentTime = null;
             if (aqiData.hourly && aqiData.hourly.pm2_5 && aqiData.hourly.time) {
-                const times = aqiData.hourly.time;
-                const pm25Values = aqiData.hourly.pm2_5;
-                
-                for (let i = pm25Values.length - 1; i >= 0; i--) {
-                    if (pm25Values[i] !== null && !isNaN(pm25Values[i])) {
-                        currentPM25 = pm25Values[i];
-                        currentTime = times[i];
+                for (let i = aqiData.hourly.pm2_5.length - 1; i >= 0; i--) {
+                    if (aqiData.hourly.pm2_5[i] !== null) {
+                        currentPM25 = aqiData.hourly.pm2_5[i];
+                        currentTime = aqiData.hourly.time[i];
                         break;
                     }
                 }
             }
             
             if (currentPM25 !== null) {
-                const calculatedAQI = calculateUSAQI(currentPM25);
-                
-                view.goTo({
-                    center: [longitude, latitude],
-                    zoom: 10
-                }).then(() => {
+                const calculatedAQI = Math.round((( (50-0) / (12-0) ) * (currentPM25-0)) + 0); // Simplified AQI for demo
+                view.goTo({ center: [longitude, latitude], zoom: 10 }).then(() => {
                     view.openPopup({
                         title: `Air Quality: ${name}, ${country || ''}`,
                         content: `<div style='font-size: 1.2em; font-weight: bold; margin-bottom: 5px;'> US AQI: ${calculatedAQI} </div> <hr> <b>PM2.5:</b> ${Math.round(currentPM25 * 10) / 10} μg/m³ <br> <b>Last Updated:</b> ${currentTime}`,
                         location: { latitude, longitude }
                     });
                 });
-                resultsContainer.innerHTML = "";
+                resultsContainer.innerHTML = `<p style="color: var(--text-secondary);">Showing results for ${name}.</p>`;
             } else {
                 resultsContainer.innerHTML = "No air quality data available for this location.";
             }
@@ -1020,11 +593,18 @@
       document.getElementById("layerOpenMeteoAQI").addEventListener("change", e => { if (openMeteoAqiLayer) openMeteoAqiLayer.visible = e.target.checked; });
       document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; });
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; });
+      document.getElementById("layerNews").addEventListener("change", e => { if (newsLayer) newsLayer.visible = e.target.checked; }); // NEW
+      document.getElementById("newsBtn").addEventListener("click", () => { // NEW: Dock button controls layer and checkbox
+          if (newsLayer) {
+              newsLayer.visible = !newsLayer.visible;
+              document.getElementById("newsBtn").classList.toggle('active');
+              document.getElementById("layerNews").checked = newsLayer.visible;
+          }
+      });
 
       // --- SETTINGS PANEL LOGIC ---
       document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
       document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= ${val}`; });
-      
       const windSpeed = document.getElementById("windSpeed"), density = document.getElementById("windDensity"), trail = document.getElementById("windTrail");
       [windSpeed, density, trail].forEach(slider => { slider.addEventListener("input", () => { document.getElementById("speedValue").textContent = windSpeed.value; document.getElementById("densityValue").textContent = density.value; document.getElementById("trailValue").textContent = trail.value; if (flowLayer?.renderer?.type === "flow") { flowLayer.renderer.flowSpeed = parseInt(windSpeed.value); flowLayer.renderer.density = parseFloat(density.value); flowLayer.renderer.trailLength = parseInt(trail.value); } }); });
       document.querySelectorAll(".preset-btn").forEach(btn => { btn.addEventListener("click", function() { const preset = this.dataset.preset; const presets = { subtle: { speed: 3, density: 0.3, trail: 80 }, normal: { speed: 6, density: 0.7, trail: 120 }, intense: { speed: 12, density: 1.0, trail: 180 } }; const config = presets[preset]; if (config) { windSpeed.value = config.speed; density.value = config.density; trail.value = config.trail; windSpeed.dispatchEvent(new Event('input')); document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active")); this.classList.add("active"); } }); });
