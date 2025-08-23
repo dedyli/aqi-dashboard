@@ -42,7 +42,7 @@
     #viewDiv { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
     #uiContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
-    /* --- MODIFIED HEADER --- */
+    /* --- HEADER --- */
     .main-header {
         position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
         z-index: 15; display: flex; align-items: center; padding: 0 16px 0 32px;
@@ -53,7 +53,7 @@
     @keyframes rotateGlobe { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .header-title h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; }
     .header-title h2 { font-size: 14px; font-weight: 400; color: var(--text-secondary); opacity: 0.8; }
-    .header-search { margin-left: auto; display: flex; align-items: center; gap: 10px; } /* NEW */
+    .header-search { margin-left: auto; display: flex; align-items: center; gap: 10px; }
     .header-search .search-input {
         width: 250px; padding: 10px 14px; border: 1px solid var(--panel-border);
         background: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 14px; border-radius: 8px;
@@ -139,6 +139,7 @@
     .preset-buttons { display: flex; gap: 8px; margin-top: 10px; }
     .preset-btn { flex: 1; }
 
+    /* --- DOCK --- */
     #controlDock {
         position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20;
         display: flex; align-items: flex-end; gap: 8px; padding: 8px; height: 70px;
@@ -156,6 +157,7 @@
     #controlDock:hover .dock-btn:hover { transform: scale(1.4) translateY(-8px); margin: 0 8px; }
     #controlDock:hover .dock-btn:hover + .dock-btn, .dock-btn.prev { transform: scale(1.2) translateY(-4px); margin: 0 4px; }
 
+    /* --- SPECIFIC PANEL STYLES --- */
     #loading { font-size: 20px; color: var(--accent-gold); text-shadow: 0 0 10px var(--accent-glow); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);}
     #panel-chat .panel-content { padding: 0; display: flex; flex-direction: column; }
     #chatMessages { flex: 1; overflow-y: auto; padding: var(--padding); display: flex; flex-direction: column; gap: 16px; }
@@ -177,6 +179,36 @@
     #panel-legend .panel-content { background-color: rgba(5,5,7,0.5); }
     #legend-container .esri-legend { background: transparent !important; box-shadow: none !important; }
     #legend-container .esri-legend__service-label, #legend-container .esri-legend__layer-caption { color: var(--text-primary) !important; font-weight: 600; }
+    
+    /* --- NEW: NEWS PANEL STYLES --- */
+    .news-item {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--panel-border);
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+    .news-description {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+    .news-link {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent-gold);
+        text-decoration: none;
+        transition: color 0.2s, text-shadow 0.2s;
+    }
+    .news-link:hover {
+        color: #fff;
+        text-shadow: 0 0 8px var(--accent-glow);
+    }
 </style>
 </head>
 <body>
@@ -196,15 +228,7 @@
 <div id="viewDiv"><div id="loading">Initializing Global Intel...</div></div>
 
 <div id="uiContainer">
-    <div class="floating-panel" id="panel-explorer" style="width: 380px; height: 500px; top: calc(var(--header-height) + 16px); left: 20px;">
-        <div class="panel-header"> <span class="panel-icon">🔍</span> <span class="panel-title">Data Explorer</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
-        <div class="panel-content">
-            <div id="search-results">
-                <p style="color: var(--text-secondary);">Search for a city in the header to see detailed analytics here. You can also click on map features to explore data.</p>
-            </div>
-        </div>
-        <div class="panel-aurora"></div>
-    </div>
+    <!-- Data Explorer Panel has been REMOVED -->
         
     <div class="floating-panel" id="panel-critical" style="width: 360px; height: 450px; top: calc(var(--header-height) + 16px); right: 20px;">
         <div class="panel-header"> <span class="panel-icon">🏭</span> <span class="panel-title">Critical AQ Zones</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
@@ -218,7 +242,7 @@
         <div class="panel-aurora"></div>
     </div>
 
-    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 420px;">
+    <div class="floating-panel" id="panel-settings" style="width: 360px; max-height: calc(100vh - var(--header-height) - 100px); top: calc(var(--header-height) + 16px); left: 20px;">
          <div class="panel-header"> <span class="panel-icon">⚙️</span> <span class="panel-title">Settings & Controls</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
          <div class="panel-content">
             <div class="settings-section">
@@ -227,7 +251,7 @@
                 <div class="layer-control"><span>Cities (Open Meteo)</span><label class="switch"><input type="checkbox" id="layerOpenMeteoAQI" checked><span class="slider"></span></label></div>
                 <div class="layer-control"><span>🌊 Flow Animation</span><label class="switch"><input type="checkbox" id="layerFlow"><span class="slider"></span></label></div>
                 <div class="layer-control"><span>🔥 Active Fire Hotspots</span><label class="switch"><input type="checkbox" id="layerFire"><span class="slider"></span></label></div>
-                <div class="layer-control"><span>📰 Live News Feed</span><label class="switch"><input type="checkbox" id="layerNews" checked><span class="slider"></span></label></div> </div>
+            </div>
             <div class="settings-section"> <div class="settings-title">Basemap</div> <div class="basemap-grid"> <div class="basemap-option active" data-basemap="satellite">Satellite</div> <div class="basemap-option" data-basemap="streets">Streets</div> <div class="basemap-option" data-basemap="hybrid">Hybrid</div> <div class="basemap-option" data-basemap="terrain">Terrain</div> <div class="basemap-option" data-basemap="dark-gray">Dark Gray</div> <div class="basemap-option" data-basemap="oceans">Oceans</div> </div> </div>
             <div class="settings-section"> <div class="settings-title">Fire Intensity Filter</div> <div class="control-slider"> <label>Min Brightness (K): <span id="brightnessValue">365</span></label> <input type="range" id="brightnessSlider" min="300" max="365" value="365" step="1"> </div> </div>
             <div class="settings-section"> <div class="settings-title">Animation Controls</div> <div class="control-slider"> <label>Flow Speed: <span id="speedValue">6</span></label> <input type="range" id="windSpeed" min="1" max="20" value="6"> </div> <div class="control-slider"> <label>Density: <span id="densityValue">0.7</span></label> <input type="range" id="windDensity" min="0.1" max="1" step="0.1" value="0.7"> </div> <div class="control-slider"> <label>Trail Length: <span id="trailValue">120</span></label> <input type="range" id="windTrail" min="50" max="300" value="120"> </div> <div class="preset-buttons"> <button class="preset-btn" data-preset="subtle">Subtle</button> <button class="preset-btn active" data-preset="normal">Normal</button> <button class="preset-btn" data-preset="intense">Intense</button> </div> </div>
@@ -240,15 +264,24 @@
         <div class="panel-content" id="legend-container"></div>
         <div class="panel-aurora"></div>
     </div>
+    
+    <!-- NEW: Environmental News Panel -->
+    <div class="floating-panel" id="panel-news" style="width: 400px; height: 600px; top: calc(var(--header-height) + 16px); left: 400px;">
+        <div class="panel-header"> <span class="panel-icon">📰</span> <span class="panel-title">Environmental News</span> <div class="panel-controls"><button class="close-btn">×</button></div> </div>
+        <div class="panel-content" id="news-content"><p style="color: var(--text-secondary);">Loading news...</p></div>
+        <div class="panel-aurora"></div>
+    </div>
 </div>
 
 <div id="controlDock">
-    <button class="dock-btn" data-panel="panel-explorer" title="Data Explorer">🔍</button>
+    <!-- Data Explorer Button has been REMOVED -->
     <button class="dock-btn" data-panel="panel-critical" title="Critical AQ Zones">🏭</button>
     <button class="dock-btn" data-panel="panel-settings" title="Settings">⚙️</button>
     <button class="dock-btn" data-panel="panel-legend" title="Legend">🗺️</button>
     <button class="dock-btn" data-panel="panel-chat" title="AI Assistant">💬</button>
-    <button class="dock-btn" id="newsBtn" title="Environmental News">📰</button> </div>
+    <!-- MODIFIED: News button now toggles the news panel -->
+    <button class="dock-btn" data-panel="panel-news" title="Environmental News">📰</button> 
+</div>
 
 <script>
     // --- DYNAMIC PANEL & DOCK LOGIC ---
@@ -362,9 +395,8 @@
       "esri/layers/ImageryLayer", "esri/layers/ImageryTileLayer","esri/renderers/FlowRenderer",
       "esri/widgets/Legend","esri/config", "esri/Graphic"
     ], function(Map, MapView, FeatureLayer, GeoJSONLayer, ImageryLayer, ImageryTileLayer, FlowRenderer, Legend, esriConfig, Graphic) {
-
-      // MODIFIED: Added newsLayer variable
-      let openMeteoAqiLayer, pm25Layer, fireLayer, flowLayer, newsLayer, legendWidget;
+      
+      let openMeteoAqiLayer, pm25Layer, fireLayer, flowLayer, legendWidget;
 
       const map = new Map({ basemap: "satellite" });
       const view = new MapView({
@@ -404,27 +436,20 @@
         document.getElementById("loading").style.display = "none";
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
-        loadNewsData(); // NEW: Load news data on startup
+        loadNewsData();
         initializeChat(view);
       });
 
-      // --- MODIFIED: loadOpenMeteoAqiData now calls the backend function ---
       async function loadOpenMeteoAqiData() {
         const loading = document.getElementById("loading");
         loading.textContent = "Fetching Global AQI data...";
         loading.style.display = "block";
 
         try {
-            // Fetch data from our new serverless function
             const response = await fetch('/.netlify/functions/get-aqi-data');
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
             const geojsonObject = await response.json();
-
-            if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) {
-                throw new Error("No valid air quality data received from backend");
-            }
+            if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) throw new Error("No valid air quality data received from backend");
             
             const blob = new Blob([JSON.stringify(geojsonObject)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -448,53 +473,40 @@
         }
       }
 
-      // --- NEW: Function to load and display the news feed ---
+      // --- MODIFIED: Function to load news into the floating panel ---
       async function loadNewsData() {
+        const newsContainer = document.getElementById("news-content");
         try {
             const response = await fetch('/.netlify/functions/get-news-feed');
             if (!response.ok) throw new Error('Failed to fetch news feed');
             
             const geojsonObject = await response.json();
             if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) {
-                 console.log("No news data returned from backend.");
+                 newsContainer.innerHTML = `<p style="color: var(--text-secondary);">No news available at the moment.</p>`;
                  return;
             }
-
-            const blob = new Blob([JSON.stringify(geojsonObject)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-
-            const newsRenderer = {
-                type: 'simple',
-                symbol: {
-                    type: 'simple-marker',
-                    style: 'square',
-                    color: [255, 255, 255, 0.8],
-                    size: '10px',
-                    outline: { color: [0, 150, 255, 0.9], width: 1.5 }
-                }
-            };
-
-            const newsPopupTemplate = {
-                title: '📰 {title}',
-                content: `{description}<br><br><b>Source:</b> {source_name}<br><a href="{url}" target="_blank">Read Full Article</a>`
-            };
-
-            newsLayer = new GeoJSONLayer({
-                url: url,
-                title: 'Environmental News',
-                renderer: newsRenderer,
-                popupTemplate: newsPopupTemplate,
-                visible: true 
+            
+            newsContainer.innerHTML = ""; // Clear loading message
+            
+            geojsonObject.features.forEach(article => {
+                const props = article.properties;
+                const newsItem = document.createElement('div');
+                newsItem.className = 'news-item';
+                
+                newsItem.innerHTML = `
+                    <div class="news-title">${props.title}</div>
+                    <div class="news-description">${props.description}</div>
+                    <a href="${props.url}" class="news-link" target="_blank" rel="noopener noreferrer">Read Full Article →</a>
+                `;
+                newsContainer.appendChild(newsItem);
             });
-            map.add(newsLayer);
-            document.getElementById("newsBtn").classList.add('active');
 
         } catch (error) {
             console.error('Error loading news data:', error);
+            newsContainer.innerHTML = `<p style="color: var(--text-secondary);">Could not load news feed. Please try again later.</p>`;
         }
       }
 
-      // --- Unchanged Functions ---
       function refreshTopCities(features) {
           if (!features || features.length === 0) return;
           const topCitiesContainer = document.getElementById("topCities");
@@ -533,13 +545,10 @@
           return { bg: 'rgba(126, 0, 35, 0.4)', text: '#fff' };
       }
 
-      // --- MODIFIED: Search functionality now uses header elements ---
+      // --- MODIFIED: Search functionality no longer updates a results panel ---
       document.getElementById("searchBtn").addEventListener("click", async () => {
-          const query = document.getElementById("searchInput").value;
+          const query = document.getElementById("searchInput").value.trim();
           if (!query) return;
-
-          const resultsContainer = document.getElementById("search-results");
-          resultsContainer.innerHTML = "Searching...";
           
           try {
             const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1`;
@@ -547,7 +556,7 @@
             const geoData = await geoResponse.json();
             
             if (!geoData.results || geoData.results.length === 0) {
-                resultsContainer.innerHTML = `City "${query}" not found.`;
+                console.warn(`City "${query}" not found.`);
                 return;
             }
             const location = geoData.results[0];
@@ -577,14 +586,19 @@
                         location: { latitude, longitude }
                     });
                 });
-                resultsContainer.innerHTML = `<p style="color: var(--text-secondary);">Showing results for ${name}.</p>`;
             } else {
-                resultsContainer.innerHTML = "No air quality data available for this location.";
+                console.warn("No air quality data available for this location.");
+                 view.goTo({ center: [longitude, latitude], zoom: 10 }).then(() => {
+                    view.openPopup({
+                        title: `Location: ${name}, ${country || ''}`,
+                        content: "No real-time air quality data is available for this specific location.",
+                        location: { latitude, longitude }
+                    });
+                });
             }
 
           } catch (error) {
             console.error("Search error:", error);
-            resultsContainer.innerHTML = "Error analyzing location.";
           }
       });
 
@@ -593,15 +607,7 @@
       document.getElementById("layerOpenMeteoAQI").addEventListener("change", e => { if (openMeteoAqiLayer) openMeteoAqiLayer.visible = e.target.checked; });
       document.getElementById("layerFlow").addEventListener("change", e => { if (flowLayer) flowLayer.visible = e.target.checked; });
       document.getElementById("layerFire").addEventListener("change", e => { if (fireLayer) fireLayer.visible = e.target.checked; });
-      document.getElementById("layerNews").addEventListener("change", e => { if (newsLayer) newsLayer.visible = e.target.checked; }); // NEW
-      document.getElementById("newsBtn").addEventListener("click", () => { // NEW: Dock button controls layer and checkbox
-          if (newsLayer) {
-              newsLayer.visible = !newsLayer.visible;
-              document.getElementById("newsBtn").classList.toggle('active');
-              document.getElementById("layerNews").checked = newsLayer.visible;
-          }
-      });
-
+      
       // --- SETTINGS PANEL LOGIC ---
       document.querySelectorAll(".basemap-option").forEach(opt => { opt.addEventListener("click", function() { map.basemap = this.dataset.basemap; document.querySelectorAll(".basemap-option").forEach(o => o.classList.remove("active")); this.classList.add("active"); }); });
       document.getElementById("brightnessSlider").addEventListener("input", e => { const val = parseInt(e.target.value); document.getElementById("brightnessValue").textContent = val; fireLayer.definitionExpression = `ACQ_DATE >= CURRENT_DATE - 1 AND BRIGHT_TI4 >= ${val}`; });
