@@ -214,7 +214,7 @@
 <body>
 
 <header class="main-header">
-    <div class="header-logo">🌍</div>
+    <div class="header-logo">🌏</div>
     <div class="header-title">
         <h1>Global Air Quality Intelligence Platform</h1>
         <h2>Group 62 Tsinghua University IEDE Program - AI Driven Environmental Monitor for the Green Economy</h2>
@@ -389,6 +389,40 @@
         chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !chatSend.disabled) sendMessage(); });
     }
 
+    // --- NEWS LOADING FUNCTION ---
+    async function loadNewsData() {
+        const newsContainer = document.getElementById("news-content");
+        try {
+            const response = await fetch('/.netlify/functions/get-news-feed');
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            
+            const newsData = await response.json();
+            
+            if (!newsData || !newsData.articles || newsData.articles.length === 0) {
+                 newsContainer.innerHTML = `<p style="color: var(--text-secondary);">No news available at the moment.</p>`;
+                 return;
+            }
+            
+            newsContainer.innerHTML = ""; // Clear loading message
+            
+            newsData.articles.forEach(article => {
+                const newsItem = document.createElement('div');
+                newsItem.className = 'news-item';
+                
+                newsItem.innerHTML = `
+                    <div class="news-title">${article.title}</div>
+                    <div class="news-description">${article.description}</div>
+                    <a href="${article.url}" class="news-link" target="_blank" rel="noopener noreferrer">Read Full Article →</a>
+                `;
+                newsContainer.appendChild(newsItem);
+            });
+
+        } catch (error) {
+            console.error('Error loading news data:', error);
+            newsContainer.innerHTML = `<p style="color: var(--text-secondary);">Could not load news feed. Please try again later.</p>`;
+        }
+    }
+
     // --- ESRI and APP LOGIC ---
     require([
       "esri/Map","esri/views/MapView", "esri/layers/FeatureLayer","esri/layers/GeoJSONLayer",
@@ -436,7 +470,7 @@
         document.getElementById("loading").style.display = "none";
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
-        loadNewsData();
+        loadNewsData(); // ADD THIS LINE TO LOAD NEWS DATA
         initializeChat(view);
       });
 
@@ -470,40 +504,6 @@
             console.error("Error fetching Open Meteo AQI data:", error);
             loading.textContent = "Failed to load AQI data.";
             setTimeout(() => loading.style.display = "none", 3000);
-        }
-      }
-
-      // --- MODIFIED: Function to load news into the floating panel ---
-      async function loadNewsData() {
-        const newsContainer = document.getElementById("news-content");
-        try {
-            const response = await fetch('/.netlify/functions/get-news-feed');
-            if (!response.ok) throw new Error('Failed to fetch news feed');
-            
-            const geojsonObject = await response.json();
-            if (!geojsonObject || !geojsonObject.features || geojsonObject.features.length === 0) {
-                 newsContainer.innerHTML = `<p style="color: var(--text-secondary);">No news available at the moment.</p>`;
-                 return;
-            }
-            
-            newsContainer.innerHTML = ""; // Clear loading message
-            
-            geojsonObject.features.forEach(article => {
-                const props = article.properties;
-                const newsItem = document.createElement('div');
-                newsItem.className = 'news-item';
-                
-                newsItem.innerHTML = `
-                    <div class="news-title">${props.title}</div>
-                    <div class="news-description">${props.description}</div>
-                    <a href="${props.url}" class="news-link" target="_blank" rel="noopener noreferrer">Read Full Article →</a>
-                `;
-                newsContainer.appendChild(newsItem);
-            });
-
-        } catch (error) {
-            console.error('Error loading news data:', error);
-            newsContainer.innerHTML = `<p style="color: var(--text-secondary);">Could not load news feed. Please try again later.</p>`;
         }
       }
 
