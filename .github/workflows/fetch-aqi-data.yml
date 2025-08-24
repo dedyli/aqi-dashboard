@@ -1,0 +1,101 @@
+name: Fetch AQI Data
+on:
+  schedule:
+    # Run every hour for fresh AQI updates
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual triggering
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        required: false
+        default: 'false'
+        type: boolean
+    
+jobs:
+  fetch-aqi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # Your function takes time to process 200 cities
+    
+    steps:
+      - name: Set up environment
+        run: |
+          echo "🚀 Starting AQI data fetch process"
+          echo "Timestamp: $(date)"
+          echo "Debug mode: ${{ inputs.debug }}"
+          
+      - name: Verify Supabase Configuration
+        run: |
+          if [[ -z "${{ secrets.SUPABASE_PROJECT_REF }}" ]]; then
+            echo "❌ SUPABASE_PROJECT_REF secret is not set"
+            exit 1
+          fi
+          if [[ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]]; then
+            echo "❌ SUPABASE_ANON_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ Supabase configuration verified"
+          
+      - name: Trigger AQI Cache Build
+        id: api_call
+        run: |
+          echo "📡 Calling Supabase Edge Function..."
+          
+          # Make the API call with timeout
+          response=$(timeout 900 curl -w "%{http_code}" -s -o response.json -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/build-aqi-cache)
+          
+          echo "Response status: $response"
+          echo "status=$response" >> $GITHUB_OUTPUT
+          
+          if [[ "${{ inputs.debug }}" == "true" ]]; then
+            echo "🐛 Debug - Full response body:"
+            cat response.json
+          else
+            echo "📊 Response summary:"
+            jq -r 'if .success then "✅ Success: \(.message) - \(.features_count) features" else "❌ Error: \(.error)" end' response.json 2>/dev/null || cat response.json
+          fi
+          
+          # Check if request was successful
+          if [ $response -eq 200 ]; then
+            echo "✅ AQI data fetch completed successfully"
+          else
+            echo "❌ AQI data fetch failed with status: $response"
+            exit 1
+          fi
+          
+      - name: Parse Results
+        if: steps.api_call.outputs.status == '200'
+        run: |
+          echo "📈 Processing results..."
+          
+          # Extract key metrics if JSON parsing is available
+          if command -v jq &> /dev/null; then
+            features_count=$(jq -r '.features_count // "unknown"' response.json)
+            cities_processed=$(jq -r '.cities_processed // "unknown"' response.json)
+            echo "🌍 Cities processed: $cities_processed"
+            echo "📍 Features collected: $features_count"
+          else
+            echo "Results saved in response.json"
+          fi
+          
+      - name: Log Success
+        if: success()
+        run: |
+          echo "✅ AQI cache has been updated successfully"
+          echo "🕐 Completed at: $(date)"
+          echo "🔄 Next run will be in 1 hour"
+          
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Failed to update AQI cache"
+          echo "🕐 Failed at: $(date)"
+          echo "📋 Troubleshooting steps:"
+          echo "  1. Check Supabase Edge Function logs"
+          echo "  2. Verify API rate limits aren't exceeded"  
+          echo "  3. Check if Open Meteo API is accessible"
+          echo ""
+          echo "🔧 Response details:"
+          cat response.json 2>/dev/null || echo "No response file available"
