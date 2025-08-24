@@ -214,7 +214,7 @@
 <body>
 
 <header class="main-header">
-    <div class="header-logo">🌏</div>
+    <div class="header-logo">🌍</div>
     <div class="header-title">
         <h1>Global Air Quality Intelligence Platform</h1>
         <h2>Group 62 Tsinghua University IEDE Program - AI Driven Environmental Monitor for the Green Economy</h2>
@@ -324,13 +324,20 @@
             }
         });
         
+        // MODIFIED: Added news refresh functionality
         dockBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const panelId = btn.dataset.panel;
                 const panel = document.getElementById(panelId);
                 if (panel) {
                     btn.classList.toggle('active'); panel.classList.toggle('visible');
-                    if (panel.classList.contains('visible')) setActive(panel);
+                    if (panel.classList.contains('visible')) {
+                        setActive(panel);
+                        // Refresh news data when news panel opens
+                        if (panelId === 'panel-news') {
+                            loadNewsData();
+                        }
+                    }
                 }
             });
         });
@@ -393,6 +400,9 @@
     async function loadNewsData() {
         const newsContainer = document.getElementById("news-content");
         try {
+            // Show loading message
+            newsContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading fresh news...</p>';
+            
             const response = await fetch('/.netlify/functions/get-news-feed');
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             
@@ -470,7 +480,7 @@
         document.getElementById("loading").style.display = "none";
         legendWidget = new Legend({ view, container: "legend-container" });
         loadOpenMeteoAqiData();
-        loadNewsData(); // ADD THIS LINE TO LOAD NEWS DATA
+        loadNewsData(); // Load news data on page load
         initializeChat(view);
       });
 
